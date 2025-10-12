@@ -154,7 +154,81 @@ const stockUpdateValidation = [
     .withMessage('Operasyon add, subtract veya set olmalıdır')
 ];
 
+// Kategori validation kuralları
+const categoryValidation = [
+  body('name')
+    .trim()
+    .notEmpty()
+    .withMessage('Kategori adı gereklidir')
+    .isLength({ max: 50 })
+    .withMessage('Kategori adı 50 karakterden fazla olamaz'),
+  
+  body('description')
+    .optional()
+    .trim()
+    .isLength({ max: 200 })
+    .withMessage('Açıklama 200 karakterden fazla olamaz'),
+  
+  body('slug')
+    .optional()
+    .trim()
+    .isLength({ min: 2, max: 50 })
+    .withMessage('Slug 2-50 karakter arasında olmalıdır')
+    .matches(/^[a-z0-9-]+$/)
+    .withMessage('Slug sadece küçük harf, rakam ve tire içerebilir'),
+  
+  body('parent')
+    .optional()
+    .isMongoId()
+    .withMessage('Geçerli bir ana kategori ID\'si giriniz'),
+  
+  body('icon')
+    .optional()
+    .trim()
+    .isLength({ max: 100 })
+    .withMessage('İkon adı 100 karakterden fazla olamaz'),
+  
+  body('status')
+    .optional()
+    .isIn(['active', 'inactive'])
+    .withMessage('Durum active veya inactive olmalıdır'),
+  
+  body('isFeatured')
+    .optional()
+    .isBoolean()
+    .withMessage('Öne çıkan alanı true/false olmalıdır'),
+  
+  body('sortOrder')
+    .optional()
+    .isInt({ min: 0 })
+    .withMessage('Sıralama numarası negatif olamaz'),
+  
+  body('metaTitle')
+    .optional()
+    .trim()
+    .isLength({ max: 60 })
+    .withMessage('Meta başlık 60 karakterden fazla olamaz'),
+  
+  body('metaDescription')
+    .optional()
+    .trim()
+    .isLength({ max: 160 })
+    .withMessage('Meta açıklama 160 karakterden fazla olamaz'),
+  
+  body('keywords')
+    .optional()
+    .isArray()
+    .withMessage('Anahtar kelimeler dizi formatında olmalıdır'),
+  
+  body('keywords.*')
+    .optional()
+    .trim()
+    .isLength({ max: 30 })
+    .withMessage('Her anahtar kelime 30 karakterden fazla olamaz')
+];
+
 module.exports = {
   productValidation,
-  stockUpdateValidation
+  stockUpdateValidation,
+  categoryValidation
 };

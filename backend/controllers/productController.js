@@ -29,7 +29,8 @@ const getProducts = async (req, res) => {
     const products = await Product.find(filter)
       .sort(sort)
       .skip(skip)
-      .limit(limit);
+      .limit(limit)
+      .populate('category', 'name slug');
 
     const total = await Product.countDocuments(filter);
 
@@ -52,7 +53,8 @@ const getProducts = async (req, res) => {
 };
 const getProduct = async (req, res) => {
   try {
-    const product = await Product.findById(req.params.id);
+    const product = await Product.findById(req.params.id)
+      .populate('category', 'name slug description');
 
     if (!product) {
       return res.status(404).json({
@@ -91,6 +93,9 @@ const createProduct = async (req, res) => {
     }
 
     const product = await Product.create(req.body);
+    
+    // Oluşturulan ürünü kategori bilgisi ile populate et
+    await product.populate('category', 'name slug description');
 
     res.status(201).json({
       success: true,
@@ -132,7 +137,7 @@ const updateProduct = async (req, res) => {
       req.params.id,
       req.body,
       { new: true, runValidators: true }
-    );
+    ).populate('category', 'name slug description');
 
     if (!product) {
       return res.status(404).json({
@@ -255,7 +260,7 @@ const getLowStockProducts = async (req, res) => {
   try {
     const products = await Product.find({
       $expr: { $lte: ['$stockQuantity', '$minStockLevel'] }
-    });
+    }).populate('category', 'name slug');
 
     res.json({
       success: true,
