@@ -11,7 +11,6 @@ const getProducts = async (req, res) => {
     const filter = {};
     if (req.query.category) filter.category = req.query.category;
     if (req.query.status) filter.status = req.query.status;
-    if (req.query.brand) filter.brand = new RegExp(req.query.brand, 'i');
     if (req.query.search) {
       filter.$text = { $search: req.query.search };
     }
@@ -54,7 +53,7 @@ const getProducts = async (req, res) => {
 const getProduct = async (req, res) => {
   try {
     const product = await Product.findById(req.params.id)
-      .populate('category', 'name slug description');
+      .populate('category', 'name slug');
 
     if (!product) {
       return res.status(404).json({
@@ -63,9 +62,7 @@ const getProduct = async (req, res) => {
       });
     }
 
-    // Görüntüleme sayısını artır
-    product.views += 1;
-    await product.save();
+    // Sade: görüntüleme artışı kaldırıldı
 
     res.json({
       success: true,
@@ -93,9 +90,8 @@ const createProduct = async (req, res) => {
     }
 
     const product = await Product.create(req.body);
-    
     // Oluşturulan ürünü kategori bilgisi ile populate et
-    await product.populate('category', 'name slug description');
+    await product.populate('category', 'name slug');
 
     res.status(201).json({
       success: true,
@@ -137,7 +133,7 @@ const updateProduct = async (req, res) => {
       req.params.id,
       req.body,
       { new: true, runValidators: true }
-    ).populate('category', 'name slug description');
+    ).populate('category', 'name slug');
 
     if (!product) {
       return res.status(404).json({
@@ -194,95 +190,12 @@ const deleteProduct = async (req, res) => {
     });
   }
 };
-const updateStock = async (req, res) => {
-  try {
-    const { quantity, operation } = req.body; // operation: 'add', 'subtract', 'set'
-
-    if (!quantity || quantity < 0) {
-      return res.status(400).json({
-        success: false,
-        message: 'Geçerli bir miktar giriniz'
-      });
-    }
-
-    const product = await Product.findById(req.params.id);
-    if (!product) {
-      return res.status(404).json({
-        success: false,
-        message: 'Ürün bulunamadı'
-      });
-    }
-
-    let newQuantity = product.stockQuantity;
-    
-    switch (operation) {
-      case 'add':
-        newQuantity += quantity;
-        break;
-      case 'subtract':
-        newQuantity -= quantity;
-        if (newQuantity < 0) newQuantity = 0;
-        break;
-      case 'set':
-        newQuantity = quantity;
-        break;
-      default:
-        return res.status(400).json({
-          success: false,
-          message: 'Geçersiz operasyon. add, subtract veya set kullanın'
-        });
-    }
-
-    product.stockQuantity = newQuantity;
-    await product.save();
-
-    res.json({
-      success: true,
-      message: 'Stok başarıyla güncellendi',
-      data: {
-        id: product._id,
-        name: product.name,
-        stockQuantity: product.stockQuantity,
-        operation: operation,
-        quantity: quantity
-      }
-    });
-  } catch (error) {
-    console.error('Update stock error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Stok güncellenirken hata oluştu',
-      error: error.message
-    });
-  }
-};
-const getLowStockProducts = async (req, res) => {
-  try {
-    const products = await Product.find({
-      $expr: { $lte: ['$stockQuantity', '$minStockLevel'] }
-    }).populate('category', 'name slug');
-
-    res.json({
-      success: true,
-      count: products.length,
-      data: products
-    });
-  } catch (error) {
-    console.error('Get low stock products error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Düşük stoklu ürünler getirilirken hata oluştu',
-      error: error.message
-    });
-  }
-};
+// Stok ve düşük stok fonksiyonları kaldırıldı
 
 module.exports = {
   getProducts,
   getProduct,
   createProduct,
   updateProduct,
-  deleteProduct,
-  updateStock,
-  getLowStockProducts
+  deleteProduct
 };

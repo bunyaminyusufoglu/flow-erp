@@ -10,6 +10,7 @@ const connectDB = require('./config/database');
 // Routes
 const productRoutes = require('./routes/productRoutes');
 const categoryRoutes = require('./routes/categoryRoutes');
+const storeRoutes = require('./routes/storeRoutes');
 
 const app = express();
 const PORT = process.env.PORT || 2000;
@@ -46,6 +47,7 @@ app.get('/api/health', (req, res) => {
 // API Routes
 app.use('/api/products', productRoutes);
 app.use('/api/categories', categoryRoutes);
+app.use('/api/stores', storeRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {
@@ -74,6 +76,7 @@ const startServer = async () => {
       console.log(`🌐 API URL: http://localhost:${PORT}`);
       console.log(`📦 Products API: http://localhost:${PORT}/api/products`);
       console.log(`📁 Categories API: http://localhost:${PORT}/api/categories`);
+      console.log(`🏬 Stores API: http://localhost:${PORT}/api/stores`);
     });
   } catch (error) {
     console.error('❌ Server startup error:', error);
