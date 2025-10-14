@@ -9,7 +9,7 @@ const connectDB = require('./config/database');
 
 // Routes
 const productRoutes = require('./routes/productRoutes');
-const categoryRoutes = require('./routes/categoryRoutes');
+const shipmentRoutes = require('./routes/shipmentRoutes');
 const storeRoutes = require('./routes/storeRoutes');
 
 const app = express();
@@ -44,9 +44,14 @@ app.get('/api/health', (req, res) => {
   });
 });
 
+// Test sayfaları
+app.get('/shipment-test', (req, res) => {
+  res.sendFile(__dirname + '/shipment-test.html');
+});
+
 // API Routes
 app.use('/api/products', productRoutes);
-app.use('/api/categories', categoryRoutes);
+app.use('/api/shipments', shipmentRoutes);
 app.use('/api/stores', storeRoutes);
 
 // Error handling middleware
@@ -75,8 +80,9 @@ const startServer = async () => {
       console.log(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
       console.log(`🌐 API URL: http://localhost:${PORT}`);
       console.log(`📦 Products API: http://localhost:${PORT}/api/products`);
-      console.log(`📁 Categories API: http://localhost:${PORT}/api/categories`);
-      console.log(`🏬 Stores API: http://localhost:${PORT}/api/stores`);
+      console.log(`📦 Shipments API: http://localhost:${PORT}/api/shipments`);
+      console.log(`🏪 Stores API: http://localhost:${PORT}/api/stores`);
+      console.log(`🧪 Shipment Test: http://localhost:${PORT}/shipment-test`);
     });
   } catch (error) {
     console.error('❌ Server startup error:', error);

@@ -6,7 +6,7 @@ const {
   updateProduct,
   deleteProduct
 } = require('../controllers/productController');
-const { productValidation, stockUpdateValidation } = require('../middleware/validation');
+const { productValidation } = require('../middleware/validation');
 
 const router = express.Router();
 
