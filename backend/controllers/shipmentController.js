@@ -35,7 +35,7 @@ const getShipments = async (req, res) => {
     }
 
     const shipments = await Shipment.find(filter)
-      .populate('items.product', 'name sku')
+      .populate('items.product', 'name sku sellingPrice purchasePrice')
       .populate('fromStore', 'name code')
       .populate('toStore', 'name code')
       .populate('createdBy', 'name email')
@@ -69,7 +69,7 @@ const getShipments = async (req, res) => {
 const getShipment = async (req, res) => {
   try {
     const shipment = await Shipment.findById(req.params.id)
-      .populate('items.product', 'name sku description')
+      .populate('items.product', 'name sku description sellingPrice purchasePrice')
       .populate('fromStore', 'name code address')
       .populate('toStore', 'name code address')
       .populate('createdBy', 'name email')
@@ -185,7 +185,7 @@ const createShipment = async (req, res) => {
     }
 
     // Sevkiyatı populate et
-    await shipment.populate('items.product', 'name sku');
+    await shipment.populate('items.product', 'name sku sellingPrice purchasePrice');
     await shipment.populate('fromStore', 'name code');
     await shipment.populate('toStore', 'name code');
     await shipment.populate('createdBy', 'name email');
@@ -235,7 +235,7 @@ const updateShipment = async (req, res) => {
       { ...req.body, updatedBy: req.user?.id || 'system' },
       { new: true, runValidators: true }
     )
-      .populate('items.product', 'name sku')
+      .populate('items.product', 'name sku sellingPrice purchasePrice')
       .populate('fromStore', 'name code')
       .populate('toStore', 'name code')
       .populate('createdBy', 'name email')
@@ -385,7 +385,7 @@ const getOverdueShipments = async (req, res) => {
       status: { $nin: ['delivered', 'cancelled'] },
       expectedDeliveryDate: { $lt: new Date() }
     })
-      .populate('items.product', 'name sku')
+      .populate('items.product', 'name sku sellingPrice purchasePrice')
       .populate('fromStore', 'name code')
       .populate('toStore', 'name code')
       .populate('createdBy', 'name email')

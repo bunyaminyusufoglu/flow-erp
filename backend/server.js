@@ -45,8 +45,16 @@ app.get('/api/health', (req, res) => {
 });
 
 // Test sayfaları
-app.get('/shipment-test', (req, res) => {
-  res.sendFile(__dirname + '/shipment-test.html');
+app.get('/shipment-view', (req, res) => {
+  res.sendFile(__dirname + '/shipment-view.html');
+});
+
+app.get('/shipment-add', (req, res) => {
+  res.sendFile(__dirname + '/shipment-add.html');
+});
+
+app.get('/product-add', (req, res) => {
+  res.sendFile(__dirname + '/product-add.html');
 });
 
 // API Routes
@@ -82,7 +90,9 @@ const startServer = async () => {
       console.log(`📦 Products API: http://localhost:${PORT}/api/products`);
       console.log(`📦 Shipments API: http://localhost:${PORT}/api/shipments`);
       console.log(`🏪 Stores API: http://localhost:${PORT}/api/stores`);
-      console.log(`🧪 Shipment Test: http://localhost:${PORT}/shipment-test`);
+      console.log(`🧪 Shipment View: http://localhost:${PORT}/shipment-view`);
+      console.log(`📝 Shipment Add: http://localhost:${PORT}/shipment-add`);
+      console.log(`📦 Product Add: http://localhost:${PORT}/product-add`);
     });
   } catch (error) {
     console.error('❌ Server startup error:', error);

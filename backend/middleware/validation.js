@@ -1,6 +1,6 @@
 const { body } = require('express-validator');
 
-// Ürün validation kuralları (sadeleştirilmiş)
+// Ürün validation kuralları
 const productValidation = [
   body('name')
     .trim()
@@ -9,12 +9,26 @@ const productValidation = [
     .isLength({ max: 100 })
     .withMessage('Ürün adı 100 karakterden fazla olamaz'),
 
+  body('description')
+    .trim()
+    .notEmpty()
+    .withMessage('Ürün açıklaması gereklidir')
+    .isLength({ max: 500 })
+    .withMessage('Açıklama 500 karakterden fazla olamaz'),
+
   body('sku')
     .trim()
     .notEmpty()
     .withMessage('SKU gereklidir')
     .isLength({ min: 3, max: 50 })
     .withMessage('SKU 3-50 karakter arasında olmalıdır'),
+
+  body('brand')
+    .trim()
+    .notEmpty()
+    .withMessage('Marka gereklidir')
+    .isLength({ max: 100 })
+    .withMessage('Marka 100 karakterden fazla olamaz'),
 
   body('category')
     .optional()
@@ -24,25 +38,30 @@ const productValidation = [
   body('purchasePrice')
     .notEmpty()
     .withMessage('Alış fiyatı gereklidir')
-    .isNumeric()
-    .withMessage('Alış fiyatı sayısal olmalıdır')
     .isFloat({ min: 0 })
-    .withMessage('Alış fiyatı negatif olamaz'),
+    .withMessage('Alış fiyatı geçerli bir sayı olmalıdır'),
 
   body('sellingPrice')
     .notEmpty()
     .withMessage('Satış fiyatı gereklidir')
-    .isNumeric()
-    .withMessage('Satış fiyatı sayısal olmalıdır')
     .isFloat({ min: 0 })
-    .withMessage('Satış fiyatı negatif olamaz'),
+    .withMessage('Satış fiyatı geçerli bir sayı olmalıdır'),
+
+  body('stockQuantity')
+    .notEmpty()
+    .withMessage('Stok miktarı gereklidir')
+    .isInt({ min: 0 })
+    .withMessage('Stok miktarı negatif olamaz'),
+
+  body('unit')
+    .optional()
+    .isIn(['adet', 'kg', 'metre', 'litre', 'kutu', 'paket'])
+    .withMessage('Geçerli bir birim seçiniz'),
 
   body('discountPrice')
     .optional()
-    .isNumeric()
-    .withMessage('Toptan/indirim fiyatı sayısal olmalıdır')
     .isFloat({ min: 0 })
-    .withMessage('Toptan/indirim fiyatı negatif olamaz'),
+    .withMessage('İndirim fiyatı geçerli bir sayı olmalıdır'),
 
   body('status')
     .optional()

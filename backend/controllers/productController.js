@@ -12,7 +12,12 @@ const getProducts = async (req, res) => {
     if (req.query.category) filter.category = req.query.category;
     if (req.query.status) filter.status = req.query.status;
     if (req.query.search) {
-      filter.$text = { $search: req.query.search };
+      filter.$or = [
+        { name: new RegExp(req.query.search, 'i') },
+        { description: new RegExp(req.query.search, 'i') },
+        { brand: new RegExp(req.query.search, 'i') },
+        { sku: new RegExp(req.query.search, 'i') }
+      ];
     }
 
     // Sıralama
@@ -28,8 +33,7 @@ const getProducts = async (req, res) => {
     const products = await Product.find(filter)
       .sort(sort)
       .skip(skip)
-      .limit(limit)
-      .populate('category', 'name slug');
+      .limit(limit);
 
     const total = await Product.countDocuments(filter);
 
@@ -43,17 +47,17 @@ const getProducts = async (req, res) => {
     });
   } catch (error) {
     console.error('Get products error:', error);
+    console.error('Error details:', error);
     res.status(500).json({
       success: false,
       message: 'Ürünler getirilirken hata oluştu',
-      error: error.message
+      error: process.env.NODE_ENV === 'development' ? error.message : 'Sunucu hatası'
     });
   }
 };
 const getProduct = async (req, res) => {
   try {
-    const product = await Product.findById(req.params.id)
-      .populate('category', 'name slug');
+    const product = await Product.findById(req.params.id);
 
     if (!product) {
       return res.status(404).json({
@@ -90,8 +94,6 @@ const createProduct = async (req, res) => {
     }
 
     const product = await Product.create(req.body);
-    // Oluşturulan ürünü kategori bilgisi ile populate et
-    await product.populate('category', 'name slug');
 
     res.status(201).json({
       success: true,
@@ -133,7 +135,7 @@ const updateProduct = async (req, res) => {
       req.params.id,
       req.body,
       { new: true, runValidators: true }
-    ).populate('category', 'name slug');
+    );
 
     if (!product) {
       return res.status(404).json({
