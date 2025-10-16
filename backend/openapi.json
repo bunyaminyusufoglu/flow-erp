@@ -1,0 +1,142 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Flow ERP Backend API",
+    "version": "1.0.0",
+    "description": "Flow ERP için ürün, mağaza ve sevkiyat yönetimi API'si"
+  },
+  "servers": [
+    { "url": "http://localhost:2000" }
+  ],
+  "paths": {
+    "/api/health": {
+      "get": {
+        "summary": "Health check",
+        "responses": {
+          "200": { "description": "OK" }
+        }
+      }
+    },
+    "/api/products": {
+      "get": {
+        "summary": "Ürünleri listele",
+        "parameters": [
+          { "in": "query", "name": "page", "schema": { "type": "integer" } },
+          { "in": "query", "name": "limit", "schema": { "type": "integer" } },
+          { "in": "query", "name": "search", "schema": { "type": "string" } }
+        ],
+        "responses": { "200": { "description": "Ürün listesi" } }
+      },
+      "post": {
+        "summary": "Yeni ürün oluştur",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["name", "description", "sku", "brand", "purchasePrice", "sellingPrice", "stockQuantity"],
+                "properties": {
+                  "name": { "type": "string" },
+                  "description": { "type": "string" },
+                  "sku": { "type": "string" },
+                  "brand": { "type": "string" },
+                  "purchasePrice": { "type": "number" },
+                  "sellingPrice": { "type": "number" },
+                  "stockQuantity": { "type": "integer" },
+                  "unit": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": { "201": { "description": "Oluşturuldu" } }
+      }
+    },
+    "/api/products/{id}": {
+      "get": {
+        "summary": "Ürün detayı",
+        "parameters": [
+          { "in": "path", "name": "id", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": { "200": { "description": "Ürün" }, "404": { "description": "Bulunamadı" } }
+      },
+      "put": {
+        "summary": "Ürün güncelle",
+        "parameters": [
+          { "in": "path", "name": "id", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "$ref": "#/paths/~1api~1products/post/requestBody/content/application~1json/schema" } } }
+        },
+        "responses": { "200": { "description": "Güncellendi" }, "404": { "description": "Bulunamadı" } }
+      },
+      "delete": {
+        "summary": "Ürün sil",
+        "parameters": [
+          { "in": "path", "name": "id", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": { "200": { "description": "Silindi" }, "404": { "description": "Bulunamadı" } }
+      }
+    },
+    "/api/stores": {
+      "get": { "summary": "Mağazaları listele", "responses": { "200": { "description": "Mağaza listesi" } } },
+      "post": { "summary": "Yeni mağaza oluştur", "responses": { "201": { "description": "Oluşturuldu" } } }
+    },
+    "/api/shipments": {
+      "get": { "summary": "Sevkiyatları listele", "responses": { "200": { "description": "Sevkiyat listesi" } } },
+      "post": {
+        "summary": "Sevkiyat oluştur",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["fromStore", "toStore", "items", "orderNumber"],
+                "properties": {
+                  "shipmentNumber": { "type": "string" },
+                  "orderNumber": { "type": "string" },
+                  "fromStore": { "type": "string" },
+                  "toStore": { "type": "string" },
+                  "expectedDeliveryDate": { "type": "string", "format": "date" },
+                  "items": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "required": ["product", "quantity"],
+                      "properties": {
+                        "product": { "type": "string" },
+                        "quantity": { "type": "integer" }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": { "201": { "description": "Oluşturuldu" } }
+      }
+    },
+    "/api/shipments/{id}": {
+      "get": { "summary": "Sevkiyat detayı", "responses": { "200": { "description": "Sevkiyat" }, "404": { "description": "Bulunamadı" } } }
+    },
+    "/api/stock-movements": {
+      "get": {
+        "summary": "Stok hareketlerini listele",
+        "parameters": [
+          { "in": "query", "name": "product", "schema": { "type": "string" } },
+          { "in": "query", "name": "store", "schema": { "type": "string" } },
+          { "in": "query", "name": "direction", "schema": { "type": "string", "enum": ["in", "out"] } },
+          { "in": "query", "name": "referenceType", "schema": { "type": "string", "enum": ["shipment", "adjustment", "return"] } },
+          { "in": "query", "name": "page", "schema": { "type": "integer" } },
+          { "in": "query", "name": "limit", "schema": { "type": "integer" } }
+        ],
+        "responses": { "200": { "description": "Hareket listesi" } }
+      }
+    }
+  }
+}
+

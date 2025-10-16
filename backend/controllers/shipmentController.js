@@ -1,6 +1,7 @@
 const Shipment = require('../models/Shipment');
 const Product = require('../models/Product');
 const Store = require('../models/Store');
+const StockMovement = require('../models/StockMovement');
 const { validationResult } = require('express-validator');
 
 // @desc    Tüm sevkiyatları getir
@@ -176,12 +177,33 @@ const createShipment = async (req, res) => {
 
     const shipment = await Shipment.create(shipmentData);
 
-    // Stokları güncelle
+    // Stokları güncelle ve hareket kaydet
     for (const item of shipment.items) {
+      // Gönderen mağazadan çıkış
       await Product.findByIdAndUpdate(
         item.product,
         { $inc: { stockQuantity: -item.quantity } }
       );
+      await StockMovement.create({
+        product: item.product,
+        store: fromStore._id,
+        direction: 'out',
+        quantity: item.quantity,
+        referenceType: 'shipment',
+        referenceId: shipment._id,
+        notes: `Sevkiyat ${shipment.shipmentNumber} ile çıkış`
+      });
+
+      // Alıcı mağazaya giriş
+      await StockMovement.create({
+        product: item.product,
+        store: toStore._id,
+        direction: 'in',
+        quantity: item.quantity,
+        referenceType: 'shipment',
+        referenceId: shipment._id,
+        notes: `Sevkiyat ${shipment.shipmentNumber} ile giriş`
+      });
     }
 
     // Sevkiyatı populate et

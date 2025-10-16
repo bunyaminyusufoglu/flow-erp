@@ -11,6 +11,7 @@ const connectDB = require('./config/database');
 const productRoutes = require('./routes/productRoutes');
 const shipmentRoutes = require('./routes/shipmentRoutes');
 const storeRoutes = require('./routes/storeRoutes');
+const stockMovementRoutes = require('./routes/stockMovementRoutes');
 
 const app = express();
 const PORT = process.env.PORT || 2000;
@@ -57,10 +58,21 @@ app.get('/product-add', (req, res) => {
   res.sendFile(__dirname + '/product-add.html');
 });
 
+// API Docs (Swagger UI via static HTML)
+app.get('/api/docs', (req, res) => {
+  res.sendFile(__dirname + '/api-docs.html');
+});
+
+// Serve OpenAPI spec
+app.get('/api/openapi.json', (req, res) => {
+  res.sendFile(__dirname + '/openapi.json');
+});
+
 // API Routes
 app.use('/api/products', productRoutes);
 app.use('/api/shipments', shipmentRoutes);
 app.use('/api/stores', storeRoutes);
+app.use('/api/stock-movements', stockMovementRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {
@@ -90,9 +102,11 @@ const startServer = async () => {
       console.log(`📦 Products API: http://localhost:${PORT}/api/products`);
       console.log(`📦 Shipments API: http://localhost:${PORT}/api/shipments`);
       console.log(`🏪 Stores API: http://localhost:${PORT}/api/stores`);
+      console.log(`📊 Stock Movements API: http://localhost:${PORT}/api/stock-movements`);
       console.log(`🧪 Shipment View: http://localhost:${PORT}/shipment-view`);
       console.log(`📝 Shipment Add: http://localhost:${PORT}/shipment-add`);
       console.log(`📦 Product Add: http://localhost:${PORT}/product-add`);
+      console.log(`📘 API Docs: http://localhost:${PORT}/api/docs`);
     });
   } catch (error) {
     console.error('❌ Server startup error:', error);
