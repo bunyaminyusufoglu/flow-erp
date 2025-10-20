@@ -1,0 +1,77 @@
+:root {
+  --erp-primary: #4f46e5; /* indigo-600 */
+  --erp-primary-700: #4338ca;
+  --erp-accent: #0ea5e9; /* sky-500 */
+  --erp-success: #16a34a; /* green-600 */
+  --erp-warning: #f59e0b; /* amber-500 */
+  --erp-danger: #dc2626; /* red-600 */
+}
+
+/* Sidebar */
+.sidebar-brand {
+  color: var(--erp-primary);
+}
+
+.nav-link {
+  border-radius: .375rem;
+  transition: color .15s ease, background-color .15s ease;
+}
+
+.nav-link:hover {
+  background-color: rgba(79, 70, 229, 0.08);
+  color: var(--erp-primary) !important;
+}
+
+.nav-link.active {
+  background-color: rgba(79, 70, 229, 0.12);
+  color: var(--erp-primary) !important;
+  font-weight: 600;
+}
+
+/* Cards */
+.card {
+  transition: transform .12s ease, box-shadow .12s ease;
+}
+
+.card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 .5rem 1rem rgba(0,0,0,.08) !important;
+}
+
+/* Badges and accents */
+.badge-primary-soft {
+  color: var(--erp-primary);
+  background-color: rgba(79, 70, 229, 0.12);
+}
+
+.badge-accent-soft {
+  color: var(--erp-accent);
+  background-color: rgba(14, 165, 233, 0.12);
+}
+
+.text-erp {
+  color: var(--erp-primary) !important;
+}
+
+.bg-erp-soft {
+  background: linear-gradient(180deg, rgba(79,70,229,0.08), rgba(79,70,229,0.02));
+}
+
+/* Buttons */
+.btn-erp {
+  color: #fff;
+  background-color: var(--erp-primary);
+  border-color: var(--erp-primary);
+}
+.btn-erp:hover {
+  color: #fff;
+  background-color: var(--erp-primary-700);
+  border-color: var(--erp-primary-700);
+}
+
+/* Ensure modal is above backdrop in all cases */
+.modal { z-index: 2000 !important; }
+.modal-backdrop { z-index: 1990 !important; }
+.modal-backdrop { pointer-events: none !important; }
+.modal, .modal-dialog, .modal-content { pointer-events: auto; }
+
