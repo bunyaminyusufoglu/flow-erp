@@ -12,6 +12,7 @@ const productRoutes = require('./routes/productRoutes');
 const shipmentRoutes = require('./routes/shipmentRoutes');
 const storeRoutes = require('./routes/storeRoutes');
 const stockMovementRoutes = require('./routes/stockMovementRoutes');
+const categoryRoutes = require('./routes/categoryRoutes');
 
 const app = express();
 const PORT = process.env.PORT || 2000;
@@ -69,6 +70,7 @@ app.get('/api/openapi.json', (req, res) => {
 });
 
 // API Routes
+app.use('/api/categories', categoryRoutes);
 app.use('/api/products', productRoutes);
 app.use('/api/shipments', shipmentRoutes);
 app.use('/api/stores', storeRoutes);
@@ -99,6 +101,7 @@ const startServer = async () => {
       console.log(`🚀 Server running on port ${PORT}`);
       console.log(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
       console.log(`🌐 API URL: http://localhost:${PORT}`);
+      console.log(`📦 Categories API: http://localhost:${PORT}/api/categories`);
       console.log(`📦 Products API: http://localhost:${PORT}/api/products`);
       console.log(`📦 Shipments API: http://localhost:${PORT}/api/shipments`);
       console.log(`🏪 Stores API: http://localhost:${PORT}/api/stores`);
