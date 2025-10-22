@@ -36,7 +36,7 @@ const getShipments = async (req, res) => {
     }
 
     const shipments = await Shipment.find(filter)
-      .populate('items.product', 'name sku sellingPrice purchasePrice')
+      .populate('items.product', 'name sku')
       .populate('fromStore', 'name code')
       .populate('toStore', 'name code')
       .populate('createdBy', 'name email')
@@ -70,7 +70,7 @@ const getShipments = async (req, res) => {
 const getShipment = async (req, res) => {
   try {
     const shipment = await Shipment.findById(req.params.id)
-      .populate('items.product', 'name sku description sellingPrice purchasePrice')
+      .populate('items.product', 'name sku description')
       .populate('fromStore', 'name code address')
       .populate('toStore', 'name code address')
       .populate('createdBy', 'name email')
@@ -117,50 +117,28 @@ const createShipment = async (req, res) => {
     const toStore = await Store.findById(req.body.toStore);
     
     if (!fromStore) {
-      return res.status(400).json({
-        success: false,
-        message: 'Gönderen mağaza bulunamadı'
-      });
+      return res.status(400).json({ success: false, message: 'Gönderen mağaza bulunamadı' });
     }
-    
     if (!toStore) {
-      return res.status(400).json({
-        success: false,
-        message: 'Alıcı mağaza bulunamadı'
-      });
+      return res.status(400).json({ success: false, message: 'Alıcı mağaza bulunamadı' });
     }
-    
     if (fromStore._id.toString() === toStore._id.toString()) {
-      return res.status(400).json({
-        success: false,
-        message: 'Gönderen ve alıcı mağaza aynı olamaz'
-      });
+      return res.status(400).json({ success: false, message: 'Gönderen ve alıcı mağaza aynı olamaz' });
     }
 
-    // Ürünleri kontrol et ve stok durumunu güncelle
+    // Ürünlerin varlığını kontrol et (stok kontrolü yapma, sadece mevcudiyet)
     for (const item of req.body.items) {
       const product = await Product.findById(item.product);
       if (!product) {
-        return res.status(400).json({
-          success: false,
-          message: `Ürün bulunamadı: ${item.product}`
-        });
-      }
-
-      if (product.stockQuantity < item.quantity) {
-        return res.status(400).json({
-          success: false,
-          message: `Yetersiz stok: ${product.name}. Mevcut: ${product.stockQuantity}, İstenen: ${item.quantity}`
-        });
+        return res.status(400).json({ success: false, message: `Ürün bulunamadı: ${item.product}` });
       }
     }
 
-    // Sevkiyat numarası oluştur
+    // Sevkiyat numarası oluştur (opsiyonel otomatik)
     let shipmentNumber = req.body.shipmentNumber;
     if (!shipmentNumber) {
-      // Son sevkiyat numarasını al
-      const lastShipment = await Shipment.findOne().sort({ shipmentNumber: -1 });
-      if (lastShipment) {
+      const lastShipment = await Shipment.findOne({ shipmentNumber: /SH\d+/ }).sort({ shipmentNumber: -1 });
+      if (lastShipment?.shipmentNumber) {
         const lastNumber = lastShipment.shipmentNumber.replace('SH', '');
         const nextNumber = parseInt(lastNumber) + 1;
         shipmentNumber = `SH${nextNumber.toString().padStart(8, '0')}`;
@@ -169,21 +147,26 @@ const createShipment = async (req, res) => {
       }
     }
 
+    // Toplamları hesapla (gönderilmezse)
+    const subtotal = req.body.items.reduce((sum, it) => sum + Number(it.totalPrice || 0), 0);
+    const shippingCost = Number(req.body.shippingCost || 0);
+    const taxAmount = Number(req.body.taxAmount || 0);
+    const totalAmount = subtotal + shippingCost + taxAmount;
+
     const shipmentData = {
       ...req.body,
       shipmentNumber,
-      createdBy: req.user?.id || 'system' // Auth sistemi eklendiğinde güncellenecek
+      subtotal,
+      shippingCost,
+      taxAmount,
+      totalAmount,
+      createdBy: req.user?.id || null
     };
 
     const shipment = await Shipment.create(shipmentData);
 
-    // Stokları güncelle ve hareket kaydet
+    // Stok hareketleri kaydet (ürün miktarlarını mağaza bazlı deftere işle)
     for (const item of shipment.items) {
-      // Gönderen mağazadan çıkış
-      await Product.findByIdAndUpdate(
-        item.product,
-        { $inc: { stockQuantity: -item.quantity } }
-      );
       await StockMovement.create({
         product: item.product,
         store: fromStore._id,
@@ -193,8 +176,6 @@ const createShipment = async (req, res) => {
         referenceId: shipment._id,
         notes: `Sevkiyat ${shipment.shipmentNumber} ile çıkış`
       });
-
-      // Alıcı mağazaya giriş
       await StockMovement.create({
         product: item.product,
         store: toStore._id,
@@ -206,8 +187,8 @@ const createShipment = async (req, res) => {
       });
     }
 
-    // Sevkiyatı populate et
-    await shipment.populate('items.product', 'name sku sellingPrice purchasePrice');
+    // Populate
+    await shipment.populate('items.product', 'name sku');
     await shipment.populate('fromStore', 'name code');
     await shipment.populate('toStore', 'name code');
     await shipment.populate('createdBy', 'name email');
@@ -219,21 +200,11 @@ const createShipment = async (req, res) => {
     });
   } catch (error) {
     console.error('Create shipment error:', error);
-    
-    // Duplicate key hatası
     if (error.code === 11000) {
       const field = Object.keys(error.keyValue)[0];
-      return res.status(400).json({
-        success: false,
-        message: `${field} zaten kullanımda`
-      });
+      return res.status(400).json({ success: false, message: `${field} zaten kullanımda` });
     }
-
-    res.status(500).json({
-      success: false,
-      message: 'Sevkiyat oluşturulurken hata oluştu',
-      error: error.message
-    });
+    res.status(500).json({ success: false, message: 'Sevkiyat oluşturulurken hata oluştu', error: error.message });
   }
 };
 

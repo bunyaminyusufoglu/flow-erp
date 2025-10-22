@@ -2,13 +2,8 @@ const { body } = require('express-validator');
 
 // Sevkiyat validation kuralları
 const shipmentValidation = [
-  body('orderNumber')
-    .trim()
-    .notEmpty()
-    .withMessage('Sipariş numarası gereklidir')
-    .isLength({ max: 50 })
-    .withMessage('Sipariş numarası 50 karakterden fazla olamaz'),
-  
+  // orderNumber kaldırıldı (opsiyonel)
+
   body('fromStore')
     .isMongoId()
     .withMessage('Geçerli bir gönderen mağaza ID\'si giriniz'),
@@ -17,7 +12,9 @@ const shipmentValidation = [
     .isMongoId()
     .withMessage('Geçerli bir alıcı mağaza ID\'si giriniz'),
   
+  // shippingMethod kaldırıldı (opsiyonel)
   body('shippingMethod')
+    .optional()
     .isIn(['internal', 'external', 'pickup'])
     .withMessage('Geçersiz kargo yöntemi'),
   
@@ -33,15 +30,13 @@ const shipmentValidation = [
     .isInt({ min: 1 })
     .withMessage('Miktar en az 1 olmalıdır'),
   
+  // Fiyat alanları kaldırıldı (unitPrice/totalPrice zorunlu değil)
   body('items.*.unitPrice')
-    .isNumeric()
-    .withMessage('Birim fiyat sayısal olmalıdır')
+    .optional()
     .isFloat({ min: 0 })
     .withMessage('Birim fiyat negatif olamaz'),
-  
   body('items.*.totalPrice')
-    .isNumeric()
-    .withMessage('Toplam fiyat sayısal olmalıdır')
+    .optional()
     .isFloat({ min: 0 })
     .withMessage('Toplam fiyat negatif olamaz'),
   
@@ -55,29 +50,21 @@ const shipmentValidation = [
       return true;
     }),
   
+  // Toplam alanlar opsiyonel
   body('subtotal')
-    .isNumeric()
-    .withMessage('Ara toplam sayısal olmalıdır')
+    .optional()
     .isFloat({ min: 0 })
     .withMessage('Ara toplam negatif olamaz'),
-  
   body('shippingCost')
     .optional()
-    .isNumeric()
-    .withMessage('Kargo ücreti sayısal olmalıdır')
     .isFloat({ min: 0 })
     .withMessage('Kargo ücreti negatif olamaz'),
-  
   body('taxAmount')
     .optional()
-    .isNumeric()
-    .withMessage('Vergi tutarı sayısal olmalıdır')
     .isFloat({ min: 0 })
     .withMessage('Vergi tutarı negatif olamaz'),
-  
   body('totalAmount')
-    .isNumeric()
-    .withMessage('Toplam tutar sayısal olmalıdır')
+    .optional()
     .isFloat({ min: 0 })
     .withMessage('Toplam tutar negatif olamaz'),
   

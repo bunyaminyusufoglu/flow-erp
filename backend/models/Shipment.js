@@ -4,14 +4,12 @@ const shipmentSchema = new mongoose.Schema({
   // Temel Bilgiler
   shipmentNumber: {
     type: String,
-    required: [true, 'Sevkiyat numarası gereklidir'],
     unique: true,
     trim: true,
     uppercase: true
   },
   orderNumber: {
     type: String,
-    required: [true, 'Sipariş numarası gereklidir'],
     trim: true
   },
   
@@ -30,9 +28,8 @@ const shipmentSchema = new mongoose.Schema({
   // Sevkiyat Bilgileri
   shippingMethod: {
     type: String,
-    required: [true, 'Sevkiyat yöntemi gereklidir'],
     enum: ['internal', 'external', 'pickup'],
-    default: 'internal'
+    default: undefined
   },
   
   trackingNumber: {
@@ -55,12 +52,10 @@ const shipmentSchema = new mongoose.Schema({
     },
     unitPrice: {
       type: Number,
-      required: [true, 'Birim fiyat gereklidir'],
       min: [0, 'Birim fiyat negatif olamaz']
     },
     totalPrice: {
       type: Number,
-      required: [true, 'Toplam fiyat gereklidir'],
       min: [0, 'Toplam fiyat negatif olamaz']
     }
   }],
@@ -75,7 +70,6 @@ const shipmentSchema = new mongoose.Schema({
   // Tarihler
   orderDate: {
     type: Date,
-    required: [true, 'Sipariş tarihi gereklidir'],
     default: Date.now
   },
   shipDate: {
@@ -92,24 +86,18 @@ const shipmentSchema = new mongoose.Schema({
   // Mali Bilgiler
   subtotal: {
     type: Number,
-    required: [true, 'Ara toplam gereklidir'],
     min: [0, 'Ara toplam negatif olamaz']
   },
   shippingCost: {
     type: Number,
-    required: [true, 'Kargo ücreti gereklidir'],
-    min: [0, 'Kargo ücreti negatif olamaz'],
-    default: 0
+    min: [0, 'Kargo ücreti negatif olamaz']
   },
   taxAmount: {
     type: Number,
-    required: [true, 'Vergi tutarı gereklidir'],
-    min: [0, 'Vergi tutarı negatif olamaz'],
-    default: 0
+    min: [0, 'Vergi tutarı negatif olamaz']
   },
   totalAmount: {
     type: Number,
-    required: [true, 'Toplam tutar gereklidir'],
     min: [0, 'Toplam tutar negatif olamaz']
   },
   
@@ -144,11 +132,12 @@ const shipmentSchema = new mongoose.Schema({
   createdBy: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
-    required: true
+    default: null // Auth yokken null bırak
   },
   updatedBy: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'User'
+    ref: 'User',
+    default: null
   },
   
   createdAt: {
