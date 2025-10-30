@@ -25,6 +25,21 @@ export default function Categories() {
     sortOrder: 0
   });
 
+  // Edit/Delete state
+  const [showEdit, setShowEdit] = useState(false);
+  const [showDelete, setShowDelete] = useState(false);
+  const [activeCategory, setActiveCategory] = useState(null);
+  const [editForm, setEditForm] = useState({
+    name: '',
+    description: '',
+    parent: '',
+    status: 'active',
+    sortOrder: 0
+  });
+  const [updating, setUpdating] = useState(false);
+  const [updateError, setUpdateError] = useState('');
+  const [deleting, setDeleting] = useState(false);
+
   const apiBase = useMemo(() => process.env.REACT_APP_API_URL || 'http://localhost:2000', []);
 
   useEffect(() => {
@@ -55,7 +70,7 @@ export default function Categories() {
 
   // Modal body-scroll yönetimi
   useEffect(() => {
-    if (showCreate) {
+    if (showCreate || showEdit || showDelete) {
       document.body.classList.add('modal-open');
     } else {
       document.body.classList.remove('modal-open');
@@ -63,14 +78,14 @@ export default function Categories() {
     return () => {
       document.body.classList.remove('modal-open');
     };
-  }, [showCreate]);
+  }, [showCreate, showEdit, showDelete]);
 
-  // Create modal açıldığında parent seçeneklerini çek
+  // Create/Edit modal açıkken parent seçeneklerini çek
   useEffect(() => {
     let cancelled = false;
     async function fetchParents() {
       try {
-        if (!showCreate) return;
+        if (!(showCreate || showEdit)) return;
         const res = await fetch(`${apiBase}/api/categories?limit=1000&sortBy=name&sortOrder=asc`);
         const data = await res.json();
         if (!cancelled && data?.success) {
@@ -82,7 +97,7 @@ export default function Categories() {
     }
     fetchParents();
     return () => { cancelled = true; };
-  }, [apiBase, showCreate]);
+  }, [apiBase, showCreate, showEdit]);
 
   function toggleSort(field) {
     if (sortBy === field) {
@@ -125,6 +140,75 @@ export default function Categories() {
     }
   }
 
+  function openEdit(cat) {
+    setActiveCategory(cat);
+    setEditForm({
+      name: cat.name || '',
+      description: cat.description || '',
+      parent: cat.parent?._id || '',
+      status: cat.status || 'active',
+      sortOrder: cat.sortOrder ?? 0
+    });
+    setUpdateError('');
+    setShowEdit(true);
+  }
+
+  function openDelete(cat) {
+    setActiveCategory(cat);
+    setShowDelete(true);
+  }
+
+  async function handleUpdate(e) {
+    e.preventDefault();
+    if (!activeCategory) return;
+    try {
+      setUpdating(true);
+      setUpdateError('');
+      const body = {
+        name: editForm.name,
+        description: editForm.description || undefined,
+        parent: editForm.parent || undefined,
+        status: editForm.status,
+        sortOrder: Number(editForm.sortOrder || 0)
+      };
+      const res = await fetch(`${apiBase}/api/categories/${activeCategory._id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+      const data = await res.json();
+      if (!res.ok || !data?.success) {
+        throw new Error(data?.message || 'Güncelleme hatası');
+      }
+      setShowEdit(false);
+      // Listeyi güncelle
+      setCategories(prev => prev.map(c => c._id === data.data._id ? data.data : c));
+    } catch (err) {
+      setUpdateError(err.message || 'Kategori güncellenemedi');
+    } finally {
+      setUpdating(false);
+    }
+  }
+
+  async function handleDelete() {
+    if (!activeCategory) return;
+    try {
+      setDeleting(true);
+      const res = await fetch(`${apiBase}/api/categories/${activeCategory._id}`, { method: 'DELETE' });
+      const data = await res.json();
+      if (!res.ok || !data?.success) {
+        throw new Error(data?.message || 'Silme hatası');
+      }
+      setShowDelete(false);
+      setCategories(prev => prev.filter(c => c._id !== activeCategory._id));
+      setTotal(t => Math.max(0, t - 1));
+    } catch (err) {
+      setError(err.message || 'Kategori silinemedi');
+    } finally {
+      setDeleting(false);
+    }
+  }
+
   return (
     <>
     <div className="container-fluid">
@@ -161,16 +245,17 @@ export default function Categories() {
                       <th className="text-center">Ürün</th>
                       <th style={{ cursor: 'pointer' }} onClick={() => toggleSort('sortOrder')}>Sıra</th>
                       <th>Durum</th>
+                      <th className="text-end">İşlemler</th>
                     </tr>
                   </thead>
                   <tbody>
                     {loading ? (
                       <tr>
-                        <td colSpan="6" className="text-center text-muted py-4">Yükleniyor...</td>
+                        <td colSpan="7" className="text-center text-muted py-4">Yükleniyor...</td>
                       </tr>
                     ) : categories.length === 0 ? (
                       <tr>
-                        <td colSpan="6" className="text-center text-muted py-4">Kayıt bulunamadı</td>
+                        <td colSpan="7" className="text-center text-muted py-4">Kayıt bulunamadı</td>
                       </tr>
                     ) : categories.map(c => (
                       <tr key={c._id}>
@@ -187,6 +272,12 @@ export default function Categories() {
                         <td>
                           {c.status === 'active' && <span className="badge text-bg-success">Aktif</span>}
                           {c.status === 'inactive' && <span className="badge text-bg-secondary">Pasif</span>}
+                        </td>
+                        <td className="text-end">
+                          <div className="btn-group btn-group-sm" role="group">
+                            <button className="btn btn-outline-primary" onClick={() => openEdit(c)}>Düzenle</button>
+                            <button className="btn btn-outline-danger" onClick={() => openDelete(c)}>Sil</button>
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -258,6 +349,79 @@ export default function Categories() {
         </div>
       </div>
       </>
+    ), document.body)}
+
+    {showEdit && activeCategory && createPortal((
+      <div className="modal d-block" style={{ zIndex: 2000 }} tabIndex="-1" role="dialog" aria-modal="true">
+        <div className="modal-dialog">
+          <div className="modal-content bg-white">
+            <div className="modal-header">
+              <h5 className="modal-title">Kategori Düzenle</h5>
+              <button type="button" className="btn-close" onClick={() => setShowEdit(false)}></button>
+            </div>
+            <form onSubmit={handleUpdate}>
+              <div className="modal-body">
+                {updateError && <div className="alert alert-danger">{updateError}</div>}
+                <div className="row g-3">
+                  <div className="col-md-6">
+                    <label className="form-label">Ad</label>
+                    <input className="form-control" required value={editForm.name} onChange={e => setEditForm({ ...editForm, name: e.target.value })} />
+                  </div>
+                  <div className="col-md-6">
+                    <label className="form-label">Durum</label>
+                    <select className="form-select" value={editForm.status} onChange={e => setEditForm({ ...editForm, status: e.target.value })}>
+                      <option value="active">Aktif</option>
+                      <option value="inactive">Pasif</option>
+                    </select>
+                  </div>
+                  <div className="col-12">
+                    <label className="form-label">Açıklama</label>
+                    <textarea className="form-control" rows="2" value={editForm.description} onChange={e => setEditForm({ ...editForm, description: e.target.value })} />
+                  </div>
+                  <div className="col-md-6">
+                    <label className="form-label">Ana Kategori</label>
+                    <select className="form-select" value={editForm.parent} onChange={e => setEditForm({ ...editForm, parent: e.target.value })}>
+                      <option value="">(Yok)</option>
+                      {parents.map(p => (
+                        <option key={p._id} value={p._id}>{p.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="col-md-6">
+                    <label className="form-label">Sıra</label>
+                    <input type="number" className="form-control" value={editForm.sortOrder} onChange={e => setEditForm({ ...editForm, sortOrder: e.target.value })} />
+                  </div>
+                </div>
+              </div>
+              <div className="modal-footer">
+                <button type="button" className="btn btn-outline-secondary" onClick={() => setShowEdit(false)} disabled={updating}>İptal</button>
+                <button type="submit" className="btn btn-erp" disabled={updating}>{updating ? 'Kaydediliyor...' : 'Kaydet'}</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    ), document.body)}
+
+    {showDelete && activeCategory && createPortal((
+      <div className="modal d-block" style={{ zIndex: 2000 }} tabIndex="-1" role="dialog" aria-modal="true">
+        <div className="modal-dialog">
+          <div className="modal-content bg-white">
+            <div className="modal-header">
+              <h5 className="modal-title">Kategoriyi Sil</h5>
+              <button type="button" className="btn-close" onClick={() => setShowDelete(false)}></button>
+            </div>
+            <div className="modal-body">
+              <p><strong>{activeCategory.name}</strong> kategorisini silmek istediğinize emin misiniz?</p>
+              <p className="text-muted small mb-0">Not: Alt kategorisi veya ürün bağlı ise silinemez.</p>
+            </div>
+            <div className="modal-footer">
+              <button type="button" className="btn btn-outline-secondary" onClick={() => setShowDelete(false)} disabled={deleting}>İptal</button>
+              <button type="button" className="btn btn-danger" onClick={handleDelete} disabled={deleting}>{deleting ? 'Siliniyor...' : 'Sil'}</button>
+            </div>
+          </div>
+        </div>
+      </div>
     ), document.body)}
     </>
   );
