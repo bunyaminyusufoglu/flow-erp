@@ -28,6 +28,7 @@ const shipmentValidation = [
   
   body('items.*.quantity')
     .isInt({ min: 1 })
+    .toInt()
     .withMessage('Miktar en az 1 olmalıdır'),
   
   // Fiyat alanları kaldırıldı (unitPrice/totalPrice zorunlu değil)
@@ -44,8 +45,15 @@ const shipmentValidation = [
     .isISO8601()
     .withMessage('Geçerli bir teslimat tarihi giriniz')
     .custom((value) => {
-      if (new Date(value) <= new Date()) {
-        throw new Error('Teslimat tarihi bugünden sonra olmalıdır');
+      const candidate = new Date(value);
+      if (isNaN(candidate.getTime())) {
+        throw new Error('Geçerli bir teslimat tarihi giriniz');
+      }
+      const today = new Date();
+      candidate.setHours(0, 0, 0, 0);
+      today.setHours(0, 0, 0, 0);
+      if (candidate < today) {
+        throw new Error('Teslimat tarihi bugünden önce olamaz');
       }
       return true;
     }),

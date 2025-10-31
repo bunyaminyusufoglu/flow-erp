@@ -39,7 +39,6 @@ const getShipments = async (req, res) => {
       .populate('items.product', 'name sku')
       .populate('fromStore', 'name code')
       .populate('toStore', 'name code')
-      .populate('createdBy', 'name email')
       .sort(sort)
       .skip(skip)
       .limit(limit);
@@ -70,11 +69,9 @@ const getShipments = async (req, res) => {
 const getShipment = async (req, res) => {
   try {
     const shipment = await Shipment.findById(req.params.id)
-      .populate('items.product', 'name sku description')
+      .populate('items.product', 'name sku description purchasePrice sellingPrice wholesalePrice')
       .populate('fromStore', 'name code address')
-      .populate('toStore', 'name code address')
-      .populate('createdBy', 'name email')
-      .populate('updatedBy', 'name email');
+      .populate('toStore', 'name code address');
 
     if (!shipment) {
       return res.status(404).json({
@@ -191,7 +188,6 @@ const createShipment = async (req, res) => {
     await shipment.populate('items.product', 'name sku');
     await shipment.populate('fromStore', 'name code');
     await shipment.populate('toStore', 'name code');
-    await shipment.populate('createdBy', 'name email');
 
     res.status(201).json({
       success: true,
@@ -225,14 +221,12 @@ const updateShipment = async (req, res) => {
 
     const shipment = await Shipment.findByIdAndUpdate(
       req.params.id,
-      { ...req.body, updatedBy: req.user?.id || 'system' },
+      { ...req.body, updatedBy: req.user?.id || null },
       { new: true, runValidators: true }
     )
-      .populate('items.product', 'name sku sellingPrice purchasePrice')
+      .populate('items.product', 'name sku sellingPrice purchasePrice wholesalePrice')
       .populate('fromStore', 'name code')
-      .populate('toStore', 'name code')
-      .populate('createdBy', 'name email')
-      .populate('updatedBy', 'name email');
+      .populate('toStore', 'name code');
 
     if (!shipment) {
       return res.status(404).json({
@@ -381,7 +375,6 @@ const getOverdueShipments = async (req, res) => {
       .populate('items.product', 'name sku sellingPrice purchasePrice')
       .populate('fromStore', 'name code')
       .populate('toStore', 'name code')
-      .populate('createdBy', 'name email')
       .sort({ expectedDeliveryDate: 1 });
 
     res.json({

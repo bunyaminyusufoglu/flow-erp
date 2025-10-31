@@ -23,6 +23,7 @@ export default function Products() {
     brand: '',
     purchasePrice: '',
     sellingPrice: '',
+    wholesalePrice: '',
     stockQuantity: '',
     unit: 'adet',
     status: 'active'
@@ -40,6 +41,7 @@ export default function Products() {
     brand: '',
     purchasePrice: '',
     sellingPrice: '',
+    wholesalePrice: '',
     stockQuantity: '',
     unit: 'adet',
     status: 'active'
@@ -113,6 +115,7 @@ export default function Products() {
         brand: form.brand,
         purchasePrice: Number(form.purchasePrice || 0),
         sellingPrice: Number(form.sellingPrice || 0),
+        wholesalePrice: form.wholesalePrice === '' ? undefined : Number(form.wholesalePrice),
         stockQuantity: Number(form.stockQuantity || 0),
         unit: form.unit,
         status: form.status
@@ -128,7 +131,7 @@ export default function Products() {
       }
       // Başarılı: listeyi yenile
       setShowCreate(false);
-      setForm({ name: '', description: '', sku: '', brand: '', purchasePrice: '', sellingPrice: '', stockQuantity: '', unit: 'adet', status: 'active' });
+      setForm({ name: '', description: '', sku: '', brand: '', purchasePrice: '', sellingPrice: '', wholesalePrice: '', stockQuantity: '', unit: 'adet', status: 'active' });
       setPage(1);
       // trigger fetch (effect deps)
       setSearch(s => s);
@@ -153,6 +156,7 @@ export default function Products() {
       brand: product.brand || '',
       purchasePrice: product.purchasePrice ?? '',
       sellingPrice: product.sellingPrice ?? '',
+      wholesalePrice: product.wholesalePrice ?? '',
       stockQuantity: product.stockQuantity ?? '',
       unit: product.unit || 'adet',
       status: product.status || 'active'
@@ -179,6 +183,7 @@ export default function Products() {
         brand: editForm.brand,
         purchasePrice: Number(editForm.purchasePrice || 0),
         sellingPrice: Number(editForm.sellingPrice || 0),
+        wholesalePrice: editForm.wholesalePrice === '' ? undefined : Number(editForm.wholesalePrice),
         stockQuantity: Number(editForm.stockQuantity || 0),
         unit: editForm.unit,
         status: editForm.status
@@ -254,6 +259,7 @@ export default function Products() {
                       <th style={{ cursor: 'pointer' }} onClick={() => toggleSort('name')}>Ad</th>
                       <th>SKU</th>
                       <th>Marka</th>
+                      <th className="text-end">Toptan Fiyatı</th>
                       <th className="text-end" style={{ cursor: 'pointer' }} onClick={() => toggleSort('sellingPrice')}>Satış Fiyatı</th>
                       <th className="text-end">Stok</th>
                       <th>Durum</th>
@@ -263,11 +269,11 @@ export default function Products() {
                   <tbody>
                     {loading ? (
                       <tr>
-                        <td colSpan="7" className="text-center text-muted py-4">Yükleniyor...</td>
+                        <td colSpan="8" className="text-center text-muted py-4">Yükleniyor...</td>
                       </tr>
                     ) : products.length === 0 ? (
                       <tr>
-                        <td colSpan="7" className="text-center text-muted py-4">Kayıt bulunamadı</td>
+                        <td colSpan="8" className="text-center text-muted py-4">Kayıt bulunamadı</td>
                       </tr>
                     ) : products.map(p => (
                       <tr key={p._id}>
@@ -277,6 +283,7 @@ export default function Products() {
                         </td>
                         <td><span className="badge badge-primary-soft">{p.sku}</span></td>
                         <td>{p.brand}</td>
+                        <td className="text-end">{new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(p.wholesalePrice || 0)}</td>
                         <td className="text-end">{new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(p.sellingPrice || 0)}</td>
                         <td className="text-end">{p.stockQuantity}</td>
                         <td>
@@ -347,6 +354,10 @@ export default function Products() {
                     <input type="number" min="0" step="0.01" className="form-control" required value={form.sellingPrice} onChange={e => setForm({ ...form, sellingPrice: e.target.value })} />
                   </div>
                   <div className="col-md-4">
+                    <label className="form-label">Toptan Fiyatı</label>
+                    <input type="number" min="0" step="0.01" className="form-control" value={form.wholesalePrice} onChange={e => setForm({ ...form, wholesalePrice: e.target.value })} />
+                  </div>
+                  <div className="col-md-4">
                     <label className="form-label">Stok</label>
                     <input type="number" min="0" className="form-control" required value={form.stockQuantity} onChange={e => setForm({ ...form, stockQuantity: e.target.value })} />
                   </div>
@@ -396,6 +407,7 @@ export default function Products() {
               <div className="mb-2"><strong>SKU:</strong> <span className="badge badge-primary-soft">{viewProduct.sku}</span></div>
               <div className="mb-2"><strong>Satış Fiyatı:</strong> {new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(viewProduct.sellingPrice || 0)}</div>
               <div className="mb-2"><strong>Alış Fiyatı:</strong> {new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(viewProduct.purchasePrice || 0)}</div>
+                <div className="mb-2"><strong>Toptan Fiyatı:</strong> {new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(viewProduct.wholesalePrice || 0)}</div>
               <div className="mb-2"><strong>Stok:</strong> {viewProduct.stockQuantity} {viewProduct.unit}</div>
               <div className="mb-2"><strong>Durum:</strong> {viewProduct.status === 'active' ? 'Aktif' : viewProduct.status === 'inactive' ? 'Pasif' : 'Durduruldu'}</div>
               <div className="mb-2"><strong>Açıklama:</strong><br />{viewProduct.description}</div>
@@ -443,6 +455,10 @@ export default function Products() {
                   <div className="col-md-4">
                     <label className="form-label">Satış Fiyatı</label>
                     <input type="number" min="0" step="0.01" className="form-control" required value={editForm.sellingPrice} onChange={e => setEditForm({ ...editForm, sellingPrice: e.target.value })} />
+                  </div>
+                  <div className="col-md-4">
+                    <label className="form-label">Toptan Fiyatı</label>
+                    <input type="number" min="0" step="0.01" className="form-control" value={editForm.wholesalePrice} onChange={e => setEditForm({ ...editForm, wholesalePrice: e.target.value })} />
                   </div>
                   <div className="col-md-4">
                     <label className="form-label">Stok</label>

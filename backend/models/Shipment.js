@@ -64,7 +64,7 @@ const shipmentSchema = new mongoose.Schema({
   status: {
     type: String,
     enum: ['pending', 'preparing', 'shipped', 'delivered', 'cancelled'],
-    default: 'pending'
+    default: undefined
   },
   
   // Tarihler

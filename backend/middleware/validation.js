@@ -47,6 +47,11 @@ const productValidation = [
     .isFloat({ min: 0 })
     .withMessage('Satış fiyatı geçerli bir sayı olmalıdır'),
 
+  body('wholesalePrice')
+    .optional()
+    .isFloat({ min: 0 })
+    .withMessage('Toptan fiyatı geçerli bir sayı olmalıdır'),
+
   body('stockQuantity')
     .notEmpty()
     .withMessage('Stok miktarı gereklidir')

@@ -20,12 +20,15 @@ export default function Sidebar() {
         <NavLink to="/dashboard" className={({ isActive }) => `nav-link ${isActive ? 'active' : 'text-dark'}`}>
           Ana Sayfa
         </NavLink>
-        <NavLink to="/products" className={({ isActive }) => `nav-link ${isActive ? 'active' : 'text-dark'}`}>
-          Ürünler
-        </NavLink>
+
         <NavLink to="/categories" className={({ isActive }) => `nav-link ${isActive ? 'active' : 'text-dark'}`}>
           Kategoriler
         </NavLink>
+
+        <NavLink to="/products" className={({ isActive }) => `nav-link ${isActive ? 'active' : 'text-dark'}`}>
+          Ürünler
+        </NavLink>
+        
         <NavLink to="/stores" className={({ isActive }) => `nav-link ${isActive ? 'active' : 'text-dark'}`}>
           Mağazalar
         </NavLink>

@@ -51,6 +51,10 @@ const productSchema = new mongoose.Schema({
     required: [true, 'Satış fiyatı gereklidir'],
     min: [0, 'Satış fiyatı negatif olamaz']
   },
+  wholesalePrice: {
+    type: Number,
+    min: [0, 'Toptan fiyat negatif olamaz']
+  },
   discountPrice: {
     type: Number,
     min: [0, 'İndirim fiyatı negatif olamaz']

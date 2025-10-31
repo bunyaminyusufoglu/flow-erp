@@ -23,6 +23,21 @@ export default function Shipments() {
 
   const [form, setForm] = useState(createEmptyShipmentForm());
 
+  // View modal state
+  const [showView, setShowView] = useState(false);
+  const [viewing, setViewing] = useState(false);
+  const [viewError, setViewError] = useState('');
+  const [detail, setDetail] = useState(null);
+  const [priceType, setPriceType] = useState('selling'); // 'purchase' | 'selling' | 'wholesale'
+  const [costs, setCosts] = useState({ shippingCost: '', taxAmount: '' });
+
+  // Edit modal state
+  const [showEdit, setShowEdit] = useState(false);
+  const [updating, setUpdating] = useState(false);
+  const [updateError, setUpdateError] = useState('');
+  const [editId, setEditId] = useState(null);
+  const [editForm, setEditForm] = useState(createEmptyShipmentForm());
+
   const apiBase = useMemo(() => process.env.REACT_APP_API_URL || 'http://localhost:2000', []);
 
   useEffect(() => {
@@ -76,10 +91,10 @@ export default function Shipments() {
   }, [apiBase]);
 
   useEffect(() => {
-    if (showCreate) document.body.classList.add('modal-open');
+    if (showCreate || showView || showEdit) document.body.classList.add('modal-open');
     else document.body.classList.remove('modal-open');
     return () => document.body.classList.remove('modal-open');
-  }, [showCreate]);
+  }, [showCreate, showView, showEdit]);
 
   function toggleSort(field) {
     if (sortBy === field) setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc');
@@ -122,7 +137,11 @@ export default function Shipments() {
         body: JSON.stringify(payload)
       });
       const data = await res.json();
-      if (!res.ok || !data?.success) throw new Error(data?.message || 'Kaydetme hatası');
+      if (!res.ok || !data?.success) {
+        const details = Array.isArray(data?.errors) ? data.errors.map(err => err.msg).join(', ') : '';
+        const serverError = typeof data?.error === 'string' ? data.error : '';
+        throw new Error(details || serverError || data?.message || 'Kaydetme hatası');
+      }
       setShowCreate(false);
       setForm(createEmptyShipmentForm());
       setPage(1);
@@ -131,6 +150,184 @@ export default function Shipments() {
       setCreateError(err.message || 'Sevkiyat eklenemedi');
     } finally {
       setCreating(false);
+    }
+  }
+
+  async function openView(id) {
+    try {
+      setShowView(true);
+      setViewing(true);
+      setViewError('');
+      const res = await fetch(`${apiBase}/api/shipments/${id}`);
+      const data = await res.json();
+      if (!res.ok || !data?.success) throw new Error(data?.message || 'Detay yüklenemedi');
+      setDetail(data.data);
+      setPriceType('selling');
+      setCosts({
+        shippingCost: data.data?.shippingCost ?? '',
+        taxAmount: data.data?.taxAmount ?? ''
+      });
+    } catch (err) {
+      setViewError(err.message || 'Detay yüklenemedi');
+    } finally {
+      setViewing(false);
+    }
+  }
+
+  function closeView() {
+    setShowView(false);
+    setDetail(null);
+    setViewError('');
+    setPriceType('selling');
+    setCosts({ shippingCost: '', taxAmount: '' });
+  }
+
+  function getUnitPriceForItem(item) {
+    const p = item?.product || {};
+    if (priceType === 'purchase') return Number(p.purchasePrice || 0);
+    if (priceType === 'wholesale') return Number(p.wholesalePrice || 0);
+    return Number(p.sellingPrice || 0);
+  }
+
+  function formatMoney(value) {
+    return new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(Number(value || 0));
+  }
+
+  const computed = (() => {
+    const items = (detail?.items || []).map(it => {
+      const unitPrice = getUnitPriceForItem(it);
+      const lineTotal = unitPrice * Number(it.quantity || 0);
+      return { ...it, __unitPrice: unitPrice, __lineTotal: lineTotal };
+    });
+    const subtotal = items.reduce((s, it) => s + it.__lineTotal, 0);
+    const shipping = Number(costs.shippingCost || 0);
+    const tax = Number(costs.taxAmount || 0);
+    const total = subtotal + shipping + tax;
+    return { items, subtotal, shipping, tax, total };
+  })();
+
+  async function applyPricesAndSave() {
+    if (!detail?._id) return;
+    try {
+      const payload = {
+        fromStore: detail.fromStore?._id || detail.fromStore,
+        toStore: detail.toStore?._id || detail.toStore,
+        expectedDeliveryDate: detail.expectedDeliveryDate ? new Date(detail.expectedDeliveryDate).toISOString().slice(0, 10) : undefined,
+        items: (detail.items || []).map((it, idx) => ({
+          product: (it.product && (it.product._id || it.product)) || '',
+          quantity: Number(it.quantity || 0),
+          unitPrice: computed.items[idx].__unitPrice,
+          totalPrice: computed.items[idx].__lineTotal
+        })),
+        subtotal: computed.subtotal,
+        shippingCost: Number(costs.shippingCost || 0),
+        taxAmount: Number(costs.taxAmount || 0),
+        totalAmount: computed.total
+      };
+      const res = await fetch(`${apiBase}/api/shipments/${detail._id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      if (!res.ok || !data?.success) {
+        const details = Array.isArray(data?.errors) ? data.errors.map(err => err.msg).join(', ') : '';
+        const serverError = typeof data?.error === 'string' ? data.error : '';
+        throw new Error(details || serverError || data?.message || 'Kaydetme hatası');
+      }
+      // Refresh view with latest data
+      setDetail(data.data);
+    } catch (err) {
+      setViewError(err.message || 'Fiyatlar uygulanamadı');
+    }
+  }
+
+  async function openEdit(id) {
+    try {
+      setShowEdit(true);
+      setEditId(id);
+      setUpdateError('');
+      const res = await fetch(`${apiBase}/api/shipments/${id}`);
+      const data = await res.json();
+      if (!res.ok || !data?.success) throw new Error(data?.message || 'Detay yüklenemedi');
+      const d = data.data || {};
+      setEditForm({
+        shipmentNumber: d.shipmentNumber || '',
+        fromStore: d.fromStore?._id || '',
+        toStore: d.toStore?._id || '',
+        items: Array.isArray(d.items) && d.items.length > 0 ? d.items.map(it => ({
+          product: (it.product && (it.product._id || it.product)) || '',
+          quantity: Number(it.quantity || 1)
+        })) : [{ product: '', quantity: 1 }],
+        expectedDeliveryDate: d.expectedDeliveryDate ? new Date(d.expectedDeliveryDate).toISOString().slice(0, 10) : ''
+      });
+    } catch (err) {
+      setUpdateError(err.message || 'Detay yüklenemedi');
+    }
+  }
+
+  function addEditItem() {
+    setEditForm({ ...editForm, items: [...editForm.items, { product: '', quantity: 1 }] });
+  }
+  function removeEditItem(index) {
+    const next = [...editForm.items];
+    next.splice(index, 1);
+    setEditForm({ ...editForm, items: next });
+  }
+  function changeEditItem(index, patch) {
+    const next = [...editForm.items];
+    next[index] = { ...next[index], ...patch };
+    next[index].quantity = Number(next[index].quantity || 0);
+    setEditForm({ ...editForm, items: next });
+  }
+
+  async function handleEdit(e) {
+    e.preventDefault();
+    try {
+      setUpdating(true);
+      setUpdateError('');
+      const payload = {
+        shipmentNumber: editForm.shipmentNumber || undefined,
+        fromStore: editForm.fromStore,
+        toStore: editForm.toStore,
+        items: editForm.items.map(it => ({
+          product: it.product,
+          quantity: Number(it.quantity || 0)
+        })),
+        expectedDeliveryDate: editForm.expectedDeliveryDate
+      };
+      const res = await fetch(`${apiBase}/api/shipments/${editId}` , {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      if (!res.ok || !data?.success) {
+        const details = Array.isArray(data?.errors) ? data.errors.map(err => err.msg).join(', ') : '';
+        const serverError = typeof data?.error === 'string' ? data.error : '';
+        throw new Error(details || serverError || data?.message || 'Güncelleme hatası');
+      }
+      setShowEdit(false);
+      setEditId(null);
+      setEditForm(createEmptyShipmentForm());
+      setPage(p => p); // refresh
+    } catch (err) {
+      setUpdateError(err.message || 'Sevkiyat güncellenemedi');
+    } finally {
+      setUpdating(false);
+    }
+  }
+
+  async function handleDelete(id) {
+    const ok = window.confirm('Sevkiyatı silmek istediğinize emin misiniz?');
+    if (!ok) return;
+    try {
+      const res = await fetch(`${apiBase}/api/shipments/${id}`, { method: 'DELETE' });
+      const data = await res.json();
+      if (!res.ok || !data?.success) throw new Error(data?.message || 'Silme hatası');
+      setPage(p => p); // refresh current page
+    } catch (err) {
+      setError(err.message || 'Sevkiyat silinemedi');
     }
   }
 
@@ -168,16 +365,17 @@ export default function Shipments() {
                       <th>Çıkan</th>
                       <th>Giren</th>
                       <th>Durum</th>
+                      <th>İşlemler</th>
                     </tr>
                   </thead>
                   <tbody>
                     {loading ? (
                       <tr>
-                        <td colSpan="4" className="text-center text-muted py-4">Yükleniyor...</td>
+                        <td colSpan="5" className="text-center text-muted py-4">Yükleniyor...</td>
                       </tr>
                     ) : shipments.length === 0 ? (
                       <tr>
-                        <td colSpan="4" className="text-center text-muted py-4">Kayıt bulunamadı</td>
+                        <td colSpan="5" className="text-center text-muted py-4">Kayıt bulunamadı</td>
                       </tr>
                     ) : shipments.map(s => (
                       <tr key={s._id}>
@@ -190,6 +388,13 @@ export default function Shipments() {
                           {s.status === 'shipped' && <span className="badge text-bg-info">Kargolandı</span>}
                           {s.status === 'delivered' && <span className="badge text-bg-success">Teslim</span>}
                           {s.status === 'cancelled' && <span className="badge text-bg-danger">İptal</span>}
+                        </td>
+                        <td>
+                          <div className="btn-group btn-group-sm" role="group">
+                            <button className="btn btn-outline-secondary" onClick={() => openView(s._id)}>Görüntüle</button>
+                            <button className="btn btn-outline-primary" onClick={() => openEdit(s._id)}>Düzenle</button>
+                            <button className="btn btn-outline-danger" onClick={() => handleDelete(s._id)}>Sil</button>
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -283,6 +488,178 @@ export default function Shipments() {
               <div className="modal-footer">
                 <button type="button" className="btn btn-outline-secondary" onClick={() => setShowCreate(false)} disabled={creating}>İptal</button>
                 <button type="submit" className="btn btn-erp" disabled={creating}>{creating ? 'Kaydediliyor...' : 'Kaydet'}</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    ), document.body)}
+
+    {showView && createPortal((
+      <div className="modal d-block" style={{ zIndex: 2000 }} tabIndex="-1" role="dialog" aria-modal="true">
+        <div className="modal-dialog modal-lg">
+          <div className="modal-content bg-white">
+            <div className="modal-header">
+              <h5 className="modal-title">Sevkiyat Detayı</h5>
+              <button type="button" className="btn-close" onClick={closeView}></button>
+            </div>
+            <div className="modal-body">
+              {viewError && <div className="alert alert-danger">{viewError}</div>}
+              {viewing ? (
+                <div className="text-muted">Yükleniyor...</div>
+              ) : detail ? (
+                <>
+                  <div className="row g-3 mb-2">
+                    <div className="col-md-4"><strong>Sevkiyat No:</strong> {detail.shipmentNumber}</div>
+                    <div className="col-md-4"><strong>Çıkan:</strong> {detail.fromStore?.name} ({detail.fromStore?.code})</div>
+                    <div className="col-md-4"><strong>Giren:</strong> {detail.toStore?.name} ({detail.toStore?.code})</div>
+                    <div className="col-md-4"><strong>Teslim Tarihi:</strong> {detail.expectedDeliveryDate ? new Date(detail.expectedDeliveryDate).toLocaleDateString() : '-'}</div>
+                    <div className="col-md-4">
+                      <strong>Durum:</strong> {' '}
+                      {detail.status ? (
+                        detail.status === 'pending' ? <span className="badge text-bg-secondary">Bekliyor</span> :
+                        detail.status === 'preparing' ? <span className="badge text-bg-warning">Hazırlanıyor</span> :
+                        detail.status === 'shipped' ? <span className="badge text-bg-info">Kargolandı</span> :
+                        detail.status === 'delivered' ? <span className="badge text-bg-success">Teslim</span> :
+                        detail.status === 'cancelled' ? <span className="badge text-bg-danger">İptal</span> : '-' ) : '-' }
+                    </div>
+                    <div className="col-md-4">
+                      <label className="form-label d-block mb-1"><strong>Fiyat Türü</strong></label>
+                      <select className="form-select" value={priceType} onChange={e => setPriceType(e.target.value)}>
+                        <option value="selling">Satış</option>
+                        <option value="wholesale">Toptan</option>
+                        <option value="purchase">Alış</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div className="table-responsive">
+                    <table className="table table-sm align-middle mb-0">
+                      <thead className="table-light">
+                        <tr>
+                          <th>Ürün</th>
+                          <th className="text-end" style={{ width: 160 }}>Miktar</th>
+                          <th className="text-end" style={{ width: 160 }}>Birim Fiyat</th>
+                          <th className="text-end" style={{ width: 160 }}>Toplam</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {computed.items.map((it, idx) => (
+                          <tr key={idx}>
+                            <td>{it.product?.name ? `${it.product.name} (${it.product.sku})` : it.product}</td>
+                            <td className="text-end">{it.quantity}</td>
+                            <td className="text-end">{formatMoney(it.__unitPrice)}</td>
+                            <td className="text-end">{formatMoney(it.__lineTotal)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  <div className="row g-3 mt-2">
+                    <div className="col-md-4">
+                      <label className="form-label">Kargo Ücreti</label>
+                      <input type="number" min="0" step="0.01" className="form-control"
+                        value={costs.shippingCost}
+                        onChange={e => setCosts({ ...costs, shippingCost: e.target.value })}
+                      />
+                    </div>
+                    <div className="col-md-4">
+                      <label className="form-label">Vergi Tutarı</label>
+                      <input type="number" min="0" step="0.01" className="form-control"
+                        value={costs.taxAmount}
+                        onChange={e => setCosts({ ...costs, taxAmount: e.target.value })}
+                      />
+                    </div>
+                    <div className="col-md-4 d-flex align-items-end justify-content-end">
+                      <div className="text-end w-100">
+                        <div><strong>Ara Toplam:</strong> {formatMoney(computed.subtotal)}</div>
+                        <div><strong>Toplam:</strong> {formatMoney(computed.total)}</div>
+                      </div>
+                    </div>
+                  </div>
+                </>
+              ) : null}
+            </div>
+            <div className="modal-footer">
+              <button type="button" className="btn btn-outline-secondary" onClick={closeView}>Kapat</button>
+              <button type="button" className="btn btn-erp" onClick={applyPricesAndSave}>Fiyatları Uygula ve Kaydet</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    ), document.body)}
+
+    {showEdit && createPortal((
+      <div className="modal d-block" style={{ zIndex: 2000 }} tabIndex="-1" role="dialog" aria-modal="true">
+        <div className="modal-dialog modal-lg">
+          <div className="modal-content bg-white">
+            <div className="modal-header">
+              <h5 className="modal-title">Sevkiyat Düzenle</h5>
+              <button type="button" className="btn-close" onClick={() => setShowEdit(false)}></button>
+            </div>
+            <form onSubmit={handleEdit}>
+              <div className="modal-body">
+                {updateError && <div className="alert alert-danger">{updateError}</div>}
+                <div className="row g-3 mb-2">
+                  <div className="col-md-4">
+                    <label className="form-label">Çıkan Mağaza</label>
+                    <select className="form-select" required value={editForm.fromStore} onChange={e => setEditForm({ ...editForm, fromStore: e.target.value })}>
+                      <option value="">Seçiniz</option>
+                      {stores.map(s => <option key={s._id} value={s._id}>{s.name} ({s.code})</option>)}
+                    </select>
+                  </div>
+                  <div className="col-md-4">
+                    <label className="form-label">Giren Mağaza</label>
+                    <select className="form-select" required value={editForm.toStore} onChange={e => setEditForm({ ...editForm, toStore: e.target.value })}>
+                      <option value="">Seçiniz</option>
+                      {stores.map(s => <option key={s._id} value={s._id}>{s.name} ({s.code})</option>)}
+                    </select>
+                  </div>
+                  <div className="col-md-4">
+                    <label className="form-label">Sevkiyat No</label>
+                    <input className="form-control" placeholder="(Boş bırakılırsa otomatik)" value={editForm.shipmentNumber} onChange={e => setEditForm({ ...editForm, shipmentNumber: e.target.value.toUpperCase() })} />
+                  </div>
+                  <div className="col-md-4">
+                    <label className="form-label">Teslim Tarihi</label>
+                    <input type="date" className="form-control" required value={editForm.expectedDeliveryDate} onChange={e => setEditForm({ ...editForm, expectedDeliveryDate: e.target.value })} />
+                  </div>
+                </div>
+
+                <div className="table-responsive">
+                  <table className="table table-sm align-middle mb-0">
+                    <thead className="table-light">
+                      <tr>
+                        <th>Ürün</th>
+                        <th style={{ width: 160 }} className="text-end">Miktar</th>
+                        <th style={{ width: 80 }}></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {editForm.items.map((it, idx) => (
+                        <tr key={idx}>
+                          <td>
+                            <select className="form-select" required value={it.product} onChange={e => changeEditItem(idx, { product: e.target.value })}>
+                              <option value="">Ürün seçin</option>
+                              {products.map(p => <option key={p._id} value={p._id}>{p.name} ({p.sku})</option>)}
+                            </select>
+                          </td>
+                          <td>
+                            <input type="number" min="1" className="form-control text-end" required value={it.quantity} onChange={e => changeEditItem(idx, { quantity: e.target.value })} />
+                          </td>
+                          <td className="text-end">
+                            <button type="button" className="btn btn-sm btn-outline-danger" onClick={() => removeEditItem(idx)}>Sil</button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                <div className="d-flex justify-content-between align-items-center mt-2">
+                  <button type="button" className="btn btn-outline-secondary" onClick={addEditItem}>Satır Ekle</button>
+                </div>
+              </div>
+              <div className="modal-footer">
+                <button type="button" className="btn btn-outline-secondary" onClick={() => setShowEdit(false)} disabled={updating}>İptal</button>
+                <button type="submit" className="btn btn-erp" disabled={updating}>{updating ? 'Güncelleniyor...' : 'Kaydet'}</button>
               </div>
             </form>
           </div>
