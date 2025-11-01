@@ -32,6 +32,9 @@ export default function Sidebar() {
         <NavLink to="/stores" className={({ isActive }) => `nav-link ${isActive ? 'active' : 'text-dark'}`}>
           Mağazalar
         </NavLink>
+        <NavLink to="/accounts" className={({ isActive }) => `nav-link ${isActive ? 'active' : 'text-dark'}`}>
+          Cari Hesaplar
+        </NavLink>
         <NavLink to="/shipments" className={({ isActive }) => `nav-link ${isActive ? 'active' : 'text-dark'}`}>
           Sevkiyatlar
         </NavLink>
