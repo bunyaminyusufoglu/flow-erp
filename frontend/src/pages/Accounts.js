@@ -32,6 +32,18 @@ export default function Accounts() {
   const [txForm, setTxForm] = useState({ date: today(), description: '', type: 'income', amount: '', category: '' });
   const [txError, setTxError] = useState('');
   const [txLoading, setTxLoading] = useState(false);
+  const [categories, setCategories] = useState([]);
+
+  // Statement (Ekstre)
+  const [showStmt, setShowStmt] = useState(false);
+  const [stmtList, setStmtList] = useState([]);
+  const [stmtLoading, setStmtLoading] = useState(false);
+  const [stmtError, setStmtError] = useState('');
+  const [stmtPage, setStmtPage] = useState(1);
+  const [stmtPages, setStmtPages] = useState(1);
+  const [stmtTotal, setStmtTotal] = useState(0);
+  const [stmtSummary, setStmtSummary] = useState({ income: 0, expense: 0, balance: 0 });
+  const [stmtFilters, setStmtFilters] = useState({ startDate: '', endDate: '', type: '', category: '', minAmount: '', maxAmount: '', search: '' });
 
   const apiBase = useMemo(() => process.env.REACT_APP_API_URL || 'http://localhost:2000', []);
 
@@ -60,6 +72,23 @@ export default function Accounts() {
     fetchData();
     return () => { mounted = false; };
   }, [apiBase, page, sortBy, sortOrder, search]);
+
+  // Kategorileri çek
+  useEffect(() => {
+    let mounted = true;
+    async function loadCategories() {
+      try {
+        const res = await fetch(`${apiBase}/api/categories?status=active&limit=1000`);
+        const data = await res.json();
+        if (!mounted) return;
+        if (data?.success && Array.isArray(data.data)) {
+          setCategories(data.data);
+        }
+      } catch {}
+    }
+    loadCategories();
+    return () => { mounted = false; };
+  }, [apiBase]);
 
   const anyModal = showCreate || showEdit || showDelete || showTx;
   useEffect(() => {
@@ -92,6 +121,14 @@ export default function Accounts() {
     setShowTx(true);
   }
 
+  async function openStatement(acc) {
+    setActiveAccount(acc);
+    setStmtPage(1);
+    setStmtFilters(f => ({ ...f, startDate: '', endDate: '', type: '', category: '', minAmount: '', maxAmount: '', search: '' }));
+    await loadStatement(acc._id, 1, stmtFilters);
+    setShowStmt(true);
+  }
+
   async function loadTransactions(accountId) {
     try {
       setTxLoading(true);
@@ -106,6 +143,34 @@ export default function Accounts() {
       setTxError(e.message || 'İşlemler alınamadı');
     } finally {
       setTxLoading(false);
+    }
+  }
+
+  async function loadStatement(accountId, pageArg = 1, filtersArg) {
+    const filters = filtersArg || stmtFilters;
+    try {
+      setStmtLoading(true);
+      setStmtError('');
+      const params = new URLSearchParams({ page: String(pageArg), limit: String(20) });
+      if (filters.startDate) params.set('startDate', filters.startDate);
+      if (filters.endDate) params.set('endDate', filters.endDate);
+      if (filters.type) params.set('type', filters.type);
+      if (filters.category) params.set('category', filters.category);
+      if (filters.minAmount) params.set('minAmount', filters.minAmount);
+      if (filters.maxAmount) params.set('maxAmount', filters.maxAmount);
+      if (filters.search) params.set('search', filters.search);
+      const res = await fetch(`${apiBase}/api/accounts/${accountId}/transactions?${params.toString()}`);
+      const data = await res.json();
+      if (!res.ok || !data?.success) throw new Error(data?.message || 'Ekstre alınamadı');
+      setStmtList(data.data || []);
+      setStmtSummary(data.summary || { income: 0, expense: 0, balance: 0 });
+      setStmtPage(data.page || 1);
+      setStmtPages(data.pages || 1);
+      setStmtTotal(data.total || 0);
+    } catch (e) {
+      setStmtError(e.message || 'Ekstre alınamadı');
+    } finally {
+      setStmtLoading(false);
     }
   }
 
@@ -178,8 +243,8 @@ export default function Accounts() {
     try {
       setTxError('');
       const amountNum = Number(txForm.amount || 0);
-      if (!txForm.date || !txForm.description || amountNum <= 0) {
-        setTxError('Tarih, açıklama ve tutar gereklidir.');
+      if (!txForm.date || !txForm.description || amountNum <= 0 || !txForm.category) {
+        setTxError('Tarih, açıklama, tutar ve kategori gereklidir.');
         return;
       }
       const payload = {
@@ -275,6 +340,7 @@ export default function Accounts() {
                           <div className="small text-muted mb-3">Tür: {typeLabel(acc.type)}</div>
                           <div className="mt-auto d-flex gap-2">
                             <button className="btn btn-outline-secondary btn-sm" onClick={() => openTransactions(acc)}>İşlemler</button>
+                            <button className="btn btn-outline-secondary btn-sm" onClick={() => openStatement(acc)}>Ekstre</button>
                             <button className="btn btn-outline-primary btn-sm" onClick={() => openEdit(acc)}>Düzenle</button>
                             <button className="btn btn-outline-danger btn-sm" onClick={() => openDelete(acc)}>Sil</button>
                           </div>
@@ -365,6 +431,114 @@ export default function Accounts() {
         </div>
       ), document.body)}
 
+    {showStmt && activeAccount && createPortal((
+      <div className="modal d-block" style={{ zIndex: 2000 }} tabIndex="-1" role="dialog" aria-modal="true">
+        <div className="modal-dialog modal-xl">
+          <div className="modal-content bg-white">
+            <div className="modal-header">
+              <h5 className="modal-title">Ekstre • {activeAccount.name}</h5>
+              <button type="button" className="btn-close" onClick={() => setShowStmt(false)}></button>
+            </div>
+            <div className="modal-body">
+              <form className="row g-2 align-items-end" onSubmit={e => { e.preventDefault(); loadStatement(activeAccount._id, 1, stmtFilters); }}>
+                <div className="col-md-2">
+                  <label className="form-label">Başlangıç</label>
+                  <input type="date" className="form-control" value={stmtFilters.startDate} onChange={e => setStmtFilters({ ...stmtFilters, startDate: e.target.value })} />
+                </div>
+                <div className="col-md-2">
+                  <label className="form-label">Bitiş</label>
+                  <input type="date" className="form-control" value={stmtFilters.endDate} onChange={e => setStmtFilters({ ...stmtFilters, endDate: e.target.value })} />
+                </div>
+                <div className="col-md-2">
+                  <label className="form-label">Tür</label>
+                  <select className="form-select" value={stmtFilters.type} onChange={e => setStmtFilters({ ...stmtFilters, type: e.target.value })}>
+                    <option value="">Hepsi</option>
+                    <option value="income">Gelir</option>
+                    <option value="expense">Gider</option>
+                  </select>
+                </div>
+                <div className="col-md-3">
+                  <label className="form-label">Kategori</label>
+                  <select className="form-select" value={stmtFilters.category} onChange={e => setStmtFilters({ ...stmtFilters, category: e.target.value })}>
+                    <option value="">Hepsi</option>
+                    {categories.map(c => (
+                      <option key={c._id} value={c._id}>{c.name}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="col-md-3">
+                  <label className="form-label">Açıklama</label>
+                  <input className="form-control" placeholder="Ara" value={stmtFilters.search} onChange={e => setStmtFilters({ ...stmtFilters, search: e.target.value })} />
+                </div>
+                <div className="col-md-2">
+                  <label className="form-label">Min Tutar</label>
+                  <input type="number" step="0.01" className="form-control" value={stmtFilters.minAmount} onChange={e => setStmtFilters({ ...stmtFilters, minAmount: e.target.value })} />
+                </div>
+                <div className="col-md-2">
+                  <label className="form-label">Max Tutar</label>
+                  <input type="number" step="0.01" className="form-control" value={stmtFilters.maxAmount} onChange={e => setStmtFilters({ ...stmtFilters, maxAmount: e.target.value })} />
+                </div>
+                <div className="col-md-2 d-grid">
+                  <button type="submit" className="btn btn-erp" disabled={stmtLoading}>Uygula</button>
+                </div>
+                <div className="col-md-2 d-grid">
+                  <button type="button" className="btn btn-outline-secondary" onClick={() => { setStmtFilters({ startDate: '', endDate: '', type: '', category: '', minAmount: '', maxAmount: '', search: '' }); loadStatement(activeAccount._id, 1, { startDate: '', endDate: '', type: '', category: '', minAmount: '', maxAmount: '', search: '' }); }} disabled={stmtLoading}>Sıfırla</button>
+                </div>
+              </form>
+
+              {stmtError && <div className="alert alert-danger mt-2">{stmtError}</div>}
+
+              <div className="d-flex gap-3 my-3">
+                <div className="badge text-bg-secondary">Gelir: {formatTRY(stmtSummary.income)}</div>
+                <div className="badge text-bg-warning">Gider: {formatTRY(stmtSummary.expense)}</div>
+                <div className={`badge ${stmtSummary.balance >= 0 ? 'text-bg-success' : 'text-bg-danger'}`}>Bakiye: {formatTRY(stmtSummary.balance)}</div>
+                <div className="small text-muted ms-auto">Toplam {stmtTotal} kayıt</div>
+              </div>
+
+              {stmtLoading ? (
+                <div className="text-center text-muted py-4">Yükleniyor...</div>
+              ) : (
+                <div className="table-responsive">
+                  <table className="table table-hover mb-0">
+                    <thead className="table-light">
+                      <tr>
+                        <th>Tarih</th>
+                        <th>Açıklama</th>
+                        <th>Tür</th>
+                        <th>Kategori</th>
+                        <th className="text-end">Tutar</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {stmtList.length === 0 ? (
+                        <tr><td colSpan="5" className="text-center text-muted py-3">Kayıt yok</td></tr>
+                      ) : stmtList.map(t => (
+                        <tr key={t._id}>
+                          <td>{formatDateTR(t.date)}</td>
+                          <td>{t.description}</td>
+                          <td>{t.type === 'income' ? <span className="badge text-bg-success">Gelir</span> : <span className="badge text-bg-warning">Gider</span>}</td>
+                          <td>{t.category?.name || '-'}</td>
+                          <td className="text-end">{formatTRY(t.amount)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+            <div className="modal-footer d-flex justify-content-between">
+              <div>
+                <button className="btn btn-outline-secondary me-2" disabled={stmtPage <= 1} onClick={() => { const next = Math.max(1, stmtPage - 1); setStmtPage(next); loadStatement(activeAccount._id, next); }}>Önceki</button>
+                <button className="btn btn-outline-secondary" disabled={stmtPage >= stmtPages} onClick={() => { const next = Math.min(stmtPages, stmtPage + 1); setStmtPage(next); loadStatement(activeAccount._id, next); }}>Sonraki</button>
+                <span className="ms-2 small text-muted">{stmtPage} / {stmtPages}</span>
+              </div>
+              <button type="button" className="btn btn-outline-secondary" onClick={() => setShowStmt(false)}>Kapat</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    ), document.body)}
+
       {showDelete && createPortal((
         <div className="modal d-block" style={{ zIndex: 2000 }} tabIndex="-1" role="dialog" aria-modal="true">
           <div className="modal-dialog">
@@ -415,6 +589,15 @@ export default function Accounts() {
                     <label className="form-label">Tutar (TL)</label>
                     <input type="number" min="0" step="0.01" className="form-control" required value={txForm.amount} onChange={e => setTxForm({ ...txForm, amount: e.target.value })} />
                   </div>
+                  <div className="col-md-3">
+                    <label className="form-label">Kategori</label>
+                    <select className="form-select" required value={txForm.category} onChange={e => setTxForm({ ...txForm, category: e.target.value })}>
+                      <option value="">Seçiniz</option>
+                      {categories.map(c => (
+                        <option key={c._id} value={c._id}>{c.name}</option>
+                      ))}
+                    </select>
+                  </div>
                   <div className="col-md-1 d-grid">
                     <button type="submit" className="btn btn-erp" disabled={txLoading}>Ekle</button>
                   </div>
@@ -434,6 +617,7 @@ export default function Accounts() {
                         <th>Tarih</th>
                         <th>Açıklama</th>
                         <th>Tür</th>
+                        <th>Kategori</th>
                         <th className="text-end">Tutar</th>
                         <th className="text-end">İşlem</th>
                       </tr>
@@ -446,6 +630,7 @@ export default function Accounts() {
                           <td>{formatDateTR(t.date)}</td>
                           <td>{t.description}</td>
                           <td>{t.type === 'income' ? <span className="badge text-bg-success">Gelir</span> : <span className="badge text-bg-warning">Gider</span>}</td>
+                          <td>{t.category?.name || '-'}</td>
                           <td className="text-end">{formatTRY(t.amount)}</td>
                           <td className="text-end">
                             <button className="btn btn-sm btn-outline-danger" onClick={() => removeTransaction(t._id)} disabled={txLoading}>Sil</button>

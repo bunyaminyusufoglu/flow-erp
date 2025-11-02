@@ -27,9 +27,9 @@ const accountTransactionSchema = new mongoose.Schema({
     maxlength: [300, 'Açıklama 300 karakteri aşamaz']
   },
   category: {
-    type: String,
-    trim: true,
-    maxlength: [60, 'Kategori adı 60 karakteri aşamaz']
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Category',
+    default: null
   }
 }, {
   timestamps: true

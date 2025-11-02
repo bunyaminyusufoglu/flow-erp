@@ -22,7 +22,7 @@ const accountTransactionValidation = [
   body('type').notEmpty().isIn(['income', 'expense']).withMessage('Tür income veya expense olmalıdır'),
   body('amount').notEmpty().isFloat({ min: 0.01 }).withMessage('Tutar 0.01 TL ve üzeri olmalıdır'),
   body('description').optional().isLength({ max: 300 }).withMessage('Açıklama 300 karakteri aşamaz'),
-  body('category').optional().isLength({ max: 60 }).withMessage('Kategori 60 karakteri aşamaz'),
+  body('category').notEmpty().withMessage('Kategori zorunludur').bail().isMongoId().withMessage('Kategori ID geçersiz'),
   (req, res, next) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {

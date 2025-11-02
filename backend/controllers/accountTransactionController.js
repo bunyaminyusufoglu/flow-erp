@@ -17,6 +17,15 @@ const getAccountTransactions = async (req, res) => {
 
     const filter = { account: account._id };
     if (req.query.type) filter.type = req.query.type;
+    if (req.query.category) filter.category = req.query.category;
+    if (req.query.minAmount || req.query.maxAmount) {
+      filter.amount = {};
+      if (req.query.minAmount) filter.amount.$gte = Number(req.query.minAmount);
+      if (req.query.maxAmount) filter.amount.$lte = Number(req.query.maxAmount);
+    }
+    if (req.query.search) {
+      filter.description = { $regex: new RegExp(req.query.search, 'i') };
+    }
     if (req.query.startDate || req.query.endDate) {
       filter.date = {};
       if (req.query.startDate) filter.date.$gte = new Date(req.query.startDate);
@@ -24,7 +33,11 @@ const getAccountTransactions = async (req, res) => {
     }
 
     const [items, total] = await Promise.all([
-      AccountTransaction.find(filter).sort({ date: -1, createdAt: -1 }).skip(skip).limit(limit),
+      AccountTransaction.find(filter)
+        .populate('category', 'name')
+        .sort({ date: -1, createdAt: -1 })
+        .skip(skip)
+        .limit(limit),
       AccountTransaction.countDocuments(filter)
     ]);
 
@@ -65,9 +78,19 @@ const createAccountTransaction = async (req, res) => {
     const account = await Account.findById(accountId).select('_id');
     if (!account) return res.status(404).json({ success: false, message: 'Cari hesap bulunamadı' });
 
+    // Kategori doğrulaması (varsa)
+    if (req.body.category) {
+      const Category = require('../models/Category');
+      const exists = await Category.exists({ _id: req.body.category });
+      if (!exists) {
+        return res.status(400).json({ success: false, message: 'Kategori bulunamadı' });
+      }
+    }
+
     const payload = { ...req.body, account: account._id };
     const tx = await AccountTransaction.create(payload);
-    res.status(201).json({ success: true, message: 'İşlem eklendi', data: tx });
+    const populated = await tx.populate('category', 'name');
+    res.status(201).json({ success: true, message: 'İşlem eklendi', data: populated });
   } catch (error) {
     console.error('Create account transaction error:', error);
     res.status(500).json({ success: false, message: 'İşlem eklenirken hata oluştu', error: error.message });
