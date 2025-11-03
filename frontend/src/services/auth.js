@@ -2,11 +2,27 @@ const API_URL = process.env.REACT_APP_API_URL;
 
 /**
  * Basit kimlik doğrulama:
- * - Önce yerel kontrol (admin/admin12345)
+ * - Önce kullanıcı tarafından kaydedilmiş yerel kimlik bilgileri (Settings)
+ * - Yoksa sabit geliştirme bilgileri (admin / admin12345)
  * - Uyuşmazsa backend'e POST /api/auth/login denemesi (varsa)
  */
 export async function login(username, password) {
-  // 1) Yerel (sabit) kontrol
+  // 1) Kullanıcı tarafından ayarlanan yerel kimlik bilgileri
+  try {
+    const raw = localStorage.getItem('customCredentials');
+    if (raw) {
+      const saved = JSON.parse(raw);
+      if (saved?.username && saved?.password && username === saved.username && password === saved.password) {
+        return {
+          success: true,
+          token: 'dev-admin-token',
+          user: { id: saved.id || '1', username: saved.username, role: saved.role || 'admin' }
+        };
+      }
+    }
+  } catch {}
+
+  // 2) Yerel (sabit) geliştirme bilgileri
   if (username === 'admin' && password === 'admin12345') {
     return {
       success: true,
@@ -15,7 +31,7 @@ export async function login(username, password) {
     };
   }
 
-  // 2) Backend (opsiyonel)
+  // 3) Backend (opsiyonel)
   try {
     const res = await fetch(`${API_URL}/api/auth/login`, {
       method: 'POST',

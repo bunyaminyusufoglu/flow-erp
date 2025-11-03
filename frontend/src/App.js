@@ -6,6 +6,7 @@ import Categories from './pages/Categories';
 import Stores from './pages/Stores';
 import Shipments from './pages/Shipments';
 import Accounts from './pages/Accounts';
+import Settings from './pages/Settings';
 
 function App() {
   const isAuthenticated = !!localStorage.getItem('token');
@@ -19,6 +20,7 @@ function App() {
       <Route path="/stores" element={<Stores />} />
       <Route path="/accounts" element={<Accounts />} />
       <Route path="/shipments" element={<Shipments />} />
+      <Route path="/settings" element={<Settings />} />
       <Route
         path="*"
         element={<Navigate to={isAuthenticated ? '/dashboard' : '/login'} replace />}

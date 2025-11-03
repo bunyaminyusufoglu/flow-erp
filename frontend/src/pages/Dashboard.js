@@ -7,7 +7,6 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [counts, setCounts] = useState({ products: 0, categories: 0, stores: 0, shipments: 0 });
-  const [shipmentStats, setShipmentStats] = useState({ totalShipments: 0, totalRevenue: 0, statusBreakdown: [] });
   const user = (() => {
     try { return JSON.parse(localStorage.getItem('user') || '{}'); }
     catch { return {}; }
@@ -28,16 +27,15 @@ export default function Dashboard() {
         setLoading(true);
         setError('');
 
-        const [prodRes, catRes, storeRes, shipRes, shipStatsRes] = await Promise.all([
+        const [prodRes, catRes, storeRes, shipRes] = await Promise.all([
           fetch(`${apiBase}/api/products?limit=1`),
           fetch(`${apiBase}/api/categories?limit=1`),
           fetch(`${apiBase}/api/stores?limit=1`),
-          fetch(`${apiBase}/api/shipments?limit=1`),
-          fetch(`${apiBase}/api/shipments/stats`)
+          fetch(`${apiBase}/api/shipments?limit=1`)
         ]);
 
-        const [prodJson, catJson, storeJson, shipJson, shipStatsJson] = await Promise.all([
-          prodRes.json(), catRes.json(), storeRes.json(), shipRes.json(), shipStatsRes.json()
+        const [prodJson, catJson, storeJson, shipJson] = await Promise.all([
+          prodRes.json(), catRes.json(), storeRes.json(), shipRes.json()
         ]);
 
         if (!isMounted) return;
@@ -49,11 +47,7 @@ export default function Dashboard() {
           shipments: shipJson?.total || 0
         });
 
-        setShipmentStats({
-          totalShipments: shipStatsJson?.data?.totalShipments || 0,
-          totalRevenue: shipStatsJson?.data?.totalRevenue || 0,
-          statusBreakdown: shipStatsJson?.data?.statusBreakdown || []
-        });
+        // Shipment stats removed from dashboard
       } catch (e) {
         if (!isMounted) return;
         setError('İstatistikler yüklenemedi.');
@@ -92,74 +86,40 @@ export default function Dashboard() {
 
           <div className="row g-3">
             <div className="col-12 col-sm-6 col-lg-3">
-              <div className="card h-100 shadow-sm">
+              <div className="card kpi-card h-100 shadow-sm">
                 <div className="card-body">
-                  <div className="text-muted small">Ürünler</div>
-                  <div className="h3 mb-0">{loading ? '...' : counts.products}</div>
+                  <div className="kpi-title">Ürünler</div>
+                  <div className="kpi-value mb-1">{loading ? '...' : counts.products}</div>
                 </div>
               </div>
             </div>
             <div className="col-12 col-sm-6 col-lg-3">
-              <div className="card h-100 shadow-sm">
+              <div className="card kpi-card h-100 shadow-sm">
                 <div className="card-body">
-                  <div className="text-muted small">Kategoriler</div>
-                  <div className="h3 mb-0">{loading ? '...' : counts.categories}</div>
+                  <div className="kpi-title">Kategoriler</div>
+                  <div className="kpi-value mb-1">{loading ? '...' : counts.categories}</div>
                 </div>
               </div>
             </div>
             <div className="col-12 col-sm-6 col-lg-3">
-              <div className="card h-100 shadow-sm">
+              <div className="card kpi-card h-100 shadow-sm">
                 <div className="card-body">
-                  <div className="text-muted small">Mağazalar</div>
-                  <div className="h3 mb-0">{loading ? '...' : counts.stores}</div>
+                  <div className="kpi-title">Mağazalar</div>
+                  <div className="kpi-value mb-1">{loading ? '...' : counts.stores}</div>
                 </div>
               </div>
             </div>
             <div className="col-12 col-sm-6 col-lg-3">
-              <div className="card h-100 shadow-sm">
+              <div className="card kpi-card h-100 shadow-sm">
                 <div className="card-body">
-                  <div className="text-muted small">Sevkiyatlar</div>
-                  <div className="h3 mb-0">{loading ? '...' : counts.shipments}</div>
+                  <div className="kpi-title">Sevkiyatlar</div>
+                  <div className="kpi-value mb-1">{loading ? '...' : counts.shipments}</div>
                 </div>
               </div>
             </div>
           </div>
 
-          <div className="row g-3 mt-1">
-            <div className="col-12 col-lg-6">
-              <div className="card h-100 shadow-sm">
-                <div className="card-body">
-                  <div className="d-flex justify-content-between align-items-center mb-2">
-                    <div className="fw-semibold">Sevkiyat Durumları</div>
-                    <span className="badge badge-primary-soft">Toplam: {shipmentStats.totalShipments}</span>
-                  </div>
-                  {loading ? (
-                    <div className="text-muted">Yükleniyor...</div>
-                  ) : (
-                    <ul className="list-group list-group-flush">
-                      {shipmentStats.statusBreakdown?.length ? shipmentStats.statusBreakdown.map((s, idx) => (
-                        <li className="list-group-item d-flex justify-content-between align-items-center" key={idx}>
-                          <span className="text-capitalize">{s._id}</span>
-                          <span className="badge badge-accent-soft">{s.count}</span>
-                        </li>
-                      )) : (
-                        <li className="list-group-item text-muted">Veri yok</li>
-                      )}
-                    </ul>
-                  )}
-                </div>
-              </div>
-            </div>
-            <div className="col-12 col-lg-6">
-              <div className="card h-100 shadow-sm">
-                <div className="card-body">
-                  <div className="fw-semibold mb-2">Toplam Gelir</div>
-                  <div className="display-6">{loading ? '...' : new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(shipmentStats.totalRevenue || 0)}</div>
-                  <small className="text-muted">Teslim edilen sevkiyatların toplam tutarı</small>
-                </div>
-              </div>
-            </div>
-          </div>
+          
           </div>
         </div>
       </div>

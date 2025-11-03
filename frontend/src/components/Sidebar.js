@@ -38,6 +38,10 @@ export default function Sidebar() {
         <NavLink to="/shipments" className={({ isActive }) => `nav-link ${isActive ? 'active' : 'text-dark'}`}>
           Sevkiyatlar
         </NavLink>
+        
+        <NavLink to="/settings" className={({ isActive }) => `nav-link ${isActive ? 'active' : 'text-dark'}`}>
+          Ayarlar
+        </NavLink>
       </nav>
 
       <div className="mt-auto p-3 border-top">
