@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import Sidebar from '../components/Sidebar';
+import * as XLSX from 'xlsx';
 
 export default function Shipments() {
   const [loading, setLoading] = useState(true);
@@ -29,7 +30,6 @@ export default function Shipments() {
   const [viewError, setViewError] = useState('');
   const [detail, setDetail] = useState(null);
   const [priceType, setPriceType] = useState('selling'); // 'purchase' | 'selling' | 'wholesale'
-  const [costs, setCosts] = useState({ shippingCost: '', taxAmount: '' });
 
   // Edit modal state
   const [showEdit, setShowEdit] = useState(false);
@@ -163,10 +163,6 @@ export default function Shipments() {
       if (!res.ok || !data?.success) throw new Error(data?.message || 'Detay yüklenemedi');
       setDetail(data.data);
       setPriceType('selling');
-      setCosts({
-        shippingCost: data.data?.shippingCost ?? '',
-        taxAmount: data.data?.taxAmount ?? ''
-      });
     } catch (err) {
       setViewError(err.message || 'Detay yüklenemedi');
     } finally {
@@ -179,7 +175,6 @@ export default function Shipments() {
     setDetail(null);
     setViewError('');
     setPriceType('selling');
-    setCosts({ shippingCost: '', taxAmount: '' });
   }
 
   function getUnitPriceForItem(item) {
@@ -200,11 +195,47 @@ export default function Shipments() {
       return { ...it, __unitPrice: unitPrice, __lineTotal: lineTotal };
     });
     const subtotal = items.reduce((s, it) => s + it.__lineTotal, 0);
-    const shipping = Number(costs.shippingCost || 0);
-    const tax = Number(costs.taxAmount || 0);
-    const total = subtotal + shipping + tax;
-    return { items, subtotal, shipping, tax, total };
+    return { items, subtotal };
   })();
+
+  function exportDetailToExcel() {
+    if (!detail) return;
+
+    const priceLabel = priceType === 'purchase' ? 'Alış' : priceType === 'wholesale' ? 'Toptan' : 'Satış';
+
+    // Tek sayfada (Sevkiyat) özet + kalemler
+    const aoa = [
+      ['Sevkiyat No', detail.shipmentNumber || ''],
+      ['Çıkan Mağaza', `${detail.fromStore?.name || ''} (${detail.fromStore?.code || ''})`],
+      ['Giren Mağaza', `${detail.toStore?.name || ''} (${detail.toStore?.code || ''})`],
+      ['Durum', detail.status || ''],
+      ['Teslim Tarihi', detail.expectedDeliveryDate ? new Date(detail.expectedDeliveryDate).toLocaleDateString('tr-TR') : ''],
+      ['Ara Toplam', computed.subtotal],
+      [],
+      ['Ürün', 'SKU', 'Miktar', `Birim Fiyat (${priceLabel})`, 'Satır Toplamı']
+    ];
+
+    computed.items.forEach(it => {
+      aoa.push([
+        it.product?.name || '',
+        it.product?.sku || '',
+        Number(it.quantity || 0),
+        it.__unitPrice,
+        it.__lineTotal
+      ]);
+    });
+
+    // Ara toplam satırı
+    aoa.push([]);
+    aoa.push(['', '', '', 'Ara Toplam', computed.subtotal]);
+
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.aoa_to_sheet(aoa);
+    XLSX.utils.book_append_sheet(wb, ws, 'Sevkiyat');
+
+    const fileName = `Sevkiyat_${detail.shipmentNumber || 'detay'}.xlsx`;
+    XLSX.writeFile(wb, fileName);
+  }
 
   async function applyPricesAndSave() {
     if (!detail?._id) return;
@@ -220,9 +251,7 @@ export default function Shipments() {
           totalPrice: computed.items[idx].__lineTotal
         })),
         subtotal: computed.subtotal,
-        shippingCost: Number(costs.shippingCost || 0),
-        taxAmount: Number(costs.taxAmount || 0),
-        totalAmount: computed.total
+        totalAmount: computed.subtotal
       };
       const res = await fetch(`${apiBase}/api/shipments/${detail._id}`, {
         method: 'PUT',
@@ -555,24 +584,9 @@ export default function Shipments() {
                     </table>
                   </div>
                   <div className="row g-3 mt-2">
-                    <div className="col-md-4">
-                      <label className="form-label">Kargo Ücreti</label>
-                      <input type="number" min="0" step="0.01" className="form-control"
-                        value={costs.shippingCost}
-                        onChange={e => setCosts({ ...costs, shippingCost: e.target.value })}
-                      />
-                    </div>
-                    <div className="col-md-4">
-                      <label className="form-label">Vergi Tutarı</label>
-                      <input type="number" min="0" step="0.01" className="form-control"
-                        value={costs.taxAmount}
-                        onChange={e => setCosts({ ...costs, taxAmount: e.target.value })}
-                      />
-                    </div>
-                    <div className="col-md-4 d-flex align-items-end justify-content-end">
+                    <div className="col d-flex align-items-end justify-content-end">
                       <div className="text-end w-100">
                         <div><strong>Ara Toplam:</strong> {formatMoney(computed.subtotal)}</div>
-                        <div><strong>Toplam:</strong> {formatMoney(computed.total)}</div>
                       </div>
                     </div>
                   </div>
@@ -581,6 +595,7 @@ export default function Shipments() {
             </div>
             <div className="modal-footer">
               <button type="button" className="btn btn-outline-secondary" onClick={closeView}>Kapat</button>
+              <button type="button" className="btn btn-outline-success" onClick={exportDetailToExcel}>Excel'e Aktar</button>
               <button type="button" className="btn btn-erp" onClick={applyPricesAndSave}>Fiyatları Uygula ve Kaydet</button>
             </div>
           </div>

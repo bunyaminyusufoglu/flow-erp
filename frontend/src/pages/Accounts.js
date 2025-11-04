@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import Sidebar from '../components/Sidebar';
+import * as XLSX from 'xlsx';
 
 export default function Accounts() {
   const [loading, setLoading] = useState(true);
@@ -144,6 +145,68 @@ export default function Accounts() {
     } finally {
       setTxLoading(false);
     }
+  }
+
+  async function exportStatementToExcel() {
+    if (!activeAccount) return;
+
+    // Tüm filtrelenmiş kayıtları tek seferde çekmeye çalış (yüksek limit)
+    const params = new URLSearchParams({ page: '1', limit: '10000' });
+    if (stmtFilters.startDate) params.set('startDate', stmtFilters.startDate);
+    if (stmtFilters.endDate) params.set('endDate', stmtFilters.endDate);
+    if (stmtFilters.type) params.set('type', stmtFilters.type);
+    if (stmtFilters.category) params.set('category', stmtFilters.category);
+    if (stmtFilters.minAmount) params.set('minAmount', stmtFilters.minAmount);
+    if (stmtFilters.maxAmount) params.set('maxAmount', stmtFilters.maxAmount);
+    if (stmtFilters.search) params.set('search', stmtFilters.search);
+
+    let rows = stmtList;
+    let summary = stmtSummary;
+    try {
+      const res = await fetch(`${apiBase}/api/accounts/${activeAccount._id}/transactions?${params.toString()}`);
+      const data = await res.json();
+      if (res.ok && data?.success) {
+        rows = data.data || rows;
+        summary = data.summary || summary;
+      }
+    } catch {}
+
+    const periodLabel = (stmtFilters.startDate || stmtFilters.endDate)
+      ? `${stmtFilters.startDate || '-'} → ${stmtFilters.endDate || '-'}`
+      : '-';
+
+    const aoa = [
+      ['Cari', activeAccount.name || ''],
+      ['Kod', activeAccount.code || ''],
+      ['Dönem', periodLabel],
+      ['Toplam Gelir', summary.income || 0],
+      ['Toplam Gider', summary.expense || 0],
+      ['Bakiye', summary.balance || 0],
+      [],
+      ['Tarih', 'Açıklama', 'Tür', 'Kategori', 'Tutar (TRY)']
+    ];
+
+    rows.forEach(t => {
+      aoa.push([
+        t.date ? new Date(t.date).toLocaleDateString('tr-TR') : '',
+        t.description || '',
+        t.type === 'income' ? 'Gelir' : 'Gider',
+        (t.category && t.category.name) || '-',
+        Number(t.amount || 0)
+      ]);
+    });
+
+    aoa.push([]);
+    aoa.push(['', '', 'Toplam Gelir', '', summary.income || 0]);
+    aoa.push(['', '', 'Toplam Gider', '', summary.expense || 0]);
+    aoa.push(['', '', 'Bakiye', '', summary.balance || 0]);
+
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.aoa_to_sheet(aoa);
+    XLSX.utils.book_append_sheet(wb, ws, 'Ekstre');
+
+    const fileName = `Ekstre_${(activeAccount.code || activeAccount.name || 'cari').toString().replace(/\s+/g, '_')}.xlsx`;
+    XLSX.writeFile(wb, fileName);
   }
 
   async function loadStatement(accountId, pageArg = 1, filtersArg) {
@@ -532,7 +595,10 @@ export default function Accounts() {
                 <button className="btn btn-outline-secondary" disabled={stmtPage >= stmtPages} onClick={() => { const next = Math.min(stmtPages, stmtPage + 1); setStmtPage(next); loadStatement(activeAccount._id, next); }}>Sonraki</button>
                 <span className="ms-2 small text-muted">{stmtPage} / {stmtPages}</span>
               </div>
-              <button type="button" className="btn btn-outline-secondary" onClick={() => setShowStmt(false)}>Kapat</button>
+              <div>
+                <button type="button" className="btn btn-outline-success me-2" onClick={exportStatementToExcel} disabled={stmtLoading || (stmtList.length === 0 && stmtTotal === 0)}>Excel'e Aktar</button>
+                <button type="button" className="btn btn-outline-secondary" onClick={() => setShowStmt(false)}>Kapat</button>
+              </div>
             </div>
           </div>
         </div>
