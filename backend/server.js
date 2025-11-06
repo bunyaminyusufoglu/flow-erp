@@ -14,6 +14,7 @@ const storeRoutes = require('./routes/storeRoutes');
 const stockMovementRoutes = require('./routes/stockMovementRoutes');
 const categoryRoutes = require('./routes/categoryRoutes');
 const accountRoutes = require('./routes/accountRoutes');
+const authRoutes = require('./routes/authRoutes');
 
 const app = express();
 const PORT = process.env.PORT || 2000;
@@ -77,6 +78,7 @@ app.use('/api/shipments', shipmentRoutes);
 app.use('/api/stores', storeRoutes);
 app.use('/api/stock-movements', stockMovementRoutes);
 app.use('/api/accounts', accountRoutes);
+app.use('/api/auth', authRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {
@@ -109,6 +111,7 @@ const startServer = async () => {
       console.log(`🏪 Stores API: http://localhost:${PORT}/api/stores`);
       console.log(`📊 Stock Movements API: http://localhost:${PORT}/api/stock-movements`);
       console.log(`📒 Accounts API: http://localhost:${PORT}/api/accounts`);
+      console.log(`🔐 Auth API: http://localhost:${PORT}/api/auth`);
       console.log(`🧪 Shipment View: http://localhost:${PORT}/shipment-view`);
       console.log(`📝 Shipment Add: http://localhost:${PORT}/shipment-add`);
       console.log(`📦 Product Add: http://localhost:${PORT}/product-add`);
