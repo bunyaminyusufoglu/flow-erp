@@ -9,40 +9,71 @@ const getCategories = async (req, res) => {
     const limit = parseInt(req.query.limit) || 10;
     const skip = (page - 1) * limit;
 
-    // Filtreleme
+    // Filtreleme (sade: ad ve durum)
     const filter = {};
     if (req.query.status) filter.status = req.query.status;
-    if (req.query.parent) filter.parent = req.query.parent;
     if (req.query.search) {
-      filter.$text = { $search: req.query.search };
+      filter.name = new RegExp(req.query.search, 'i');
     }
 
-    // Sıralama
+    // Sıralama (varsayılan: ada göre artan)
     const sort = {};
     if (req.query.sortBy) {
       const sortField = req.query.sortBy;
       const sortOrder = req.query.sortOrder === 'desc' ? -1 : 1;
       sort[sortField] = sortOrder;
     } else {
-      sort.sortOrder = 1;
       sort.name = 1;
     }
 
-    const categories = await Category.find(filter)
-      .sort(sort)
-      .skip(skip)
-      .limit(limit)
-      .populate('parent', 'name slug');
+    // Aggregation ile ürün sayısıyla birlikte getir (sayfalı)
+    const pipeline = [
+      { $match: filter },
+      { $sort: sort },
+      {
+        $facet: {
+          data: [
+            { $skip: skip },
+            { $limit: limit },
+            // ürün sayısı
+            {
+              $lookup: {
+                from: 'products',
+                let: { catId: '$_id' },
+                pipeline: [
+                  { $match: { $expr: { $eq: ['$category', '$$catId'] } } },
+                  { $count: 'count' }
+                ],
+                as: 'productStats'
+              }
+            },
+            {
+              $addFields: {
+                productCount: {
+                  $ifNull: [ { $first: '$productStats.count' }, 0 ]
+                }
+              }
+            },
+            { $project: { productStats: 0 } }
+          ],
+          metadata: [
+            { $count: 'total' }
+          ]
+        }
+      }
+    ];
 
-    const total = await Category.countDocuments(filter);
+    const aggResult = await Category.aggregate(pipeline);
+    const data = (aggResult[0]?.data) || [];
+    const total = (aggResult[0]?.metadata?.[0]?.total) || 0;
 
     res.json({
       success: true,
-      count: categories.length,
+      count: data.length,
       total,
       page,
       pages: Math.ceil(total / limit),
-      data: categories
+      data
     });
   } catch (error) {
     console.error('Get categories error:', error);
@@ -57,8 +88,9 @@ const getCategories = async (req, res) => {
 // Kategori ağacını getir
 const getCategoryTree = async (req, res) => {
   try {
-    const tree = await Category.getCategoryTree();
-    
+    // Sade modelde hiyerarşi yok; aktif kategorileri düz liste olarak döndür
+    const tree = await Category.find({ status: 'active' }).sort({ name: 1 });
+
     res.json({
       success: true,
       count: tree.length,
@@ -105,21 +137,8 @@ const getCategory = async (req, res) => {
 // Slug ile kategori getir
 const getCategoryBySlug = async (req, res) => {
   try {
-    const category = await Category.findOne({ slug: req.params.slug })
-      .populate('parent', 'name slug')
-      .populate('children', 'name slug status');
-
-    if (!category) {
-      return res.status(404).json({
-        success: false,
-        message: 'Kategori bulunamadı'
-      });
-    }
-
-    res.json({
-      success: true,
-      data: category
-    });
+    // Sade modelde slug alanı yok; desteklenmiyor
+    return res.status(404).json({ success: false, message: 'Desteklenmeyen istek' });
   } catch (error) {
     console.error('Get category by slug error:', error);
     res.status(500).json({
@@ -143,27 +162,14 @@ const createCategory = async (req, res) => {
       });
     }
 
-    // Parent kategori kontrolü
-    if (req.body.parent) {
-      const parentCategory = await Category.findById(req.body.parent);
-      if (!parentCategory) {
-        return res.status(400).json({
-          success: false,
-          message: 'Ana kategori bulunamadı'
-        });
-      }
-    }
-
-    const category = await Category.create(req.body);
-
-    // Oluşturulan kategoriyi populate ile getir
-    const populatedCategory = await Category.findById(category._id)
-      .populate('parent', 'name slug');
+    // Sade: sadece name ve status alınır
+    const payload = { name: req.body.name, status: req.body.status || 'active' };
+    const category = await Category.create(payload);
 
     res.status(201).json({
       success: true,
       message: 'Kategori başarıyla oluşturuldu',
-      data: populatedCategory
+      data: category
     });
   } catch (error) {
     console.error('Create category error:', error);
@@ -198,30 +204,15 @@ const updateCategory = async (req, res) => {
       });
     }
 
-    // Parent kategori kontrolü (kendi kendini parent yapmaya çalışıyorsa)
-    if (req.body.parent && req.body.parent === req.params.id) {
-      return res.status(400).json({
-        success: false,
-        message: 'Kategori kendi alt kategorisi olamaz'
-      });
-    }
-
-    // Parent kategori kontrolü
-    if (req.body.parent) {
-      const parentCategory = await Category.findById(req.body.parent);
-      if (!parentCategory) {
-        return res.status(400).json({
-          success: false,
-          message: 'Ana kategori bulunamadı'
-        });
-      }
-    }
+    const payload = {};
+    if (typeof req.body.name === 'string') payload.name = req.body.name;
+    if (typeof req.body.status === 'string') payload.status = req.body.status;
 
     const category = await Category.findByIdAndUpdate(
       req.params.id,
-      req.body,
+      payload,
       { new: true, runValidators: true }
-    ).populate('parent', 'name slug');
+    );
 
     if (!category) {
       return res.status(404).json({
@@ -267,15 +258,6 @@ const deleteCategory = async (req, res) => {
       });
     }
 
-    // Alt kategorileri kontrol et
-    const childrenCount = await Category.countDocuments({ parent: req.params.id });
-    if (childrenCount > 0) {
-      return res.status(400).json({
-        success: false,
-        message: 'Bu kategorinin alt kategorileri var. Önce alt kategorileri siliniz.'
-      });
-    }
-
     // Bu kategoriye ait ürünleri kontrol et
     const productsCount = await Product.countDocuments({ category: req.params.id });
     if (productsCount > 0) {
@@ -313,7 +295,7 @@ const updateCategoryProductCount = async (req, res) => {
       });
     }
 
-    const count = await category.getProductCount();
+    const count = await Product.countDocuments({ category: category._id });
 
     res.json({
       success: true,
@@ -338,16 +320,14 @@ const updateCategoryProductCount = async (req, res) => {
 const updateAllCategoryProductCounts = async (req, res) => {
   try {
     const categories = await Category.find();
-    const results = [];
-
-    for (const category of categories) {
-      const count = await category.getProductCount();
-      results.push({
+    const results = await Promise.all(categories.map(async (category) => {
+      const count = await Product.countDocuments({ category: category._id });
+      return {
         categoryId: category._id,
         categoryName: category.name,
         productCount: count
-      });
-    }
+      };
+    }));
 
     res.json({
       success: true,

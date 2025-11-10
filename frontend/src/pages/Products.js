@@ -6,6 +6,7 @@ export default function Products() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [products, setProducts] = useState([]);
+  const [categories, setCategories] = useState([]);
   const [page, setPage] = useState(1);
   const [pages, setPages] = useState(1);
   const [total, setTotal] = useState(0);
@@ -26,8 +27,10 @@ export default function Products() {
     wholesalePrice: '',
     stockQuantity: '',
     unit: 'adet',
-    status: 'active'
+    status: 'active',
+    category: ''
   });
+  const [skuTouched, setSkuTouched] = useState(false);
 
   // View/Edit state
   const [showView, setShowView] = useState(false);
@@ -44,7 +47,8 @@ export default function Products() {
     wholesalePrice: '',
     stockQuantity: '',
     unit: 'adet',
-    status: 'active'
+    status: 'active',
+    category: ''
   });
   const [updating, setUpdating] = useState(false);
   const [updateError, setUpdateError] = useState('');
@@ -55,6 +59,18 @@ export default function Products() {
   const [deleting, setDeleting] = useState(false);
 
   const apiBase = useMemo(() => process.env.REACT_APP_API_URL || 'http://localhost:2000', []);
+
+  function generateSku(name, price) {
+    const letter = (name || '').trim().charAt(0);
+    const priceStr = String(price ?? '').trim();
+    if (!letter || !priceStr) return '';
+    // Keep numeric form with dot decimal, strip spaces
+    const normalized = priceStr.replace(',', '.');
+    const n = Number(normalized);
+    if (!isFinite(n) || n <= 0) return '';
+    const formatted = Number.isInteger(n) ? String(Math.trunc(n)) : n.toFixed(2).replace(/\.?0+$/, '');
+    return `${letter.toUpperCase()}-${formatted}`;
+  }
 
   useEffect(() => {
     let isMounted = true;
@@ -81,6 +97,24 @@ export default function Products() {
     fetchProducts();
     return () => { isMounted = false; };
   }, [apiBase, page, search, sortBy, sortOrder]);
+
+  // Kategorileri önyükle (ad'a göre)
+  useEffect(() => {
+    let cancelled = false;
+    async function loadCategories() {
+      try {
+        const res = await fetch(`${apiBase}/api/categories?limit=1000&sortBy=name&sortOrder=asc&status=active`);
+        const data = await res.json();
+        if (!cancelled && data?.success) {
+          setCategories(Array.isArray(data.data) ? data.data : []);
+        }
+      } catch {
+        if (!cancelled) setCategories([]);
+      }
+    }
+    loadCategories();
+    return () => { cancelled = true; };
+  }, [apiBase]);
 
   // Body scroll ve modal-open sınıfı yönetimi
   useEffect(() => {
@@ -118,7 +152,8 @@ export default function Products() {
         wholesalePrice: form.wholesalePrice === '' ? undefined : Number(form.wholesalePrice),
         stockQuantity: Number(form.stockQuantity || 0),
         unit: form.unit,
-        status: form.status
+        status: form.status,
+        category: form.category || undefined
       };
       const res = await fetch(`${apiBase}/api/products`, {
         method: 'POST',
@@ -131,7 +166,7 @@ export default function Products() {
       }
       // Başarılı: listeyi yenile
       setShowCreate(false);
-      setForm({ name: '', description: '', sku: '', brand: '', purchasePrice: '', sellingPrice: '', wholesalePrice: '', stockQuantity: '', unit: 'adet', status: 'active' });
+      setForm({ name: '', description: '', sku: '', brand: '', purchasePrice: '', sellingPrice: '', wholesalePrice: '', stockQuantity: '', unit: 'adet', status: 'active', category: '' });
       setPage(1);
       // trigger fetch (effect deps)
       setSearch(s => s);
@@ -159,7 +194,8 @@ export default function Products() {
       wholesalePrice: product.wholesalePrice ?? '',
       stockQuantity: product.stockQuantity ?? '',
       unit: product.unit || 'adet',
-      status: product.status || 'active'
+      status: product.status || 'active',
+      category: (product.category && (product.category._id || product.category)) || ''
     });
     setUpdateError('');
     setShowEdit(true);
@@ -186,7 +222,8 @@ export default function Products() {
         wholesalePrice: editForm.wholesalePrice === '' ? undefined : Number(editForm.wholesalePrice),
         stockQuantity: Number(editForm.stockQuantity || 0),
         unit: editForm.unit,
-        status: editForm.status
+        status: editForm.status,
+        category: editForm.category || undefined
       };
       const res = await fetch(`${apiBase}/api/products/${editProduct._id}`, {
         method: 'PUT',
@@ -230,13 +267,16 @@ export default function Products() {
     <>
     <div className="container-fluid">
       <div className="row">
-        <div className="col-auto p-0">
+        <div className="col-auto p-0 d-none d-lg-block">
           <Sidebar />
         </div>
         <div className="col">
           <div className="py-4">
             <div className="d-flex justify-content-between align-items-center mb-3">
-              <h1 className="h4 mb-0">Ürünler</h1>
+              <div className="d-flex align-items-center gap-2">
+                <button className="btn btn-outline-secondary d-lg-none" onClick={() => { try { document.body.classList.add('sidebar-open'); } catch {} }}>☰</button>
+                <h1 className="h4 mb-0">Ürünler</h1>
+              </div>
               <div className="d-flex gap-2">
                 <input
                   className="form-control"
@@ -331,19 +371,38 @@ export default function Products() {
                 <div className="row g-3">
                   <div className="col-md-6">
                     <label className="form-label">Ad</label>
-                    <input className="form-control" required value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} />
+                    <input className="form-control" required value={form.name} onChange={e => {
+                      const nextName = e.target.value;
+                      setForm(prev => {
+                        const next = { ...prev, name: nextName };
+                        if (!skuTouched) {
+                          next.sku = generateSku(nextName, prev.sellingPrice);
+                        }
+                        return next;
+                      });
+                    }} />
                   </div>
                   <div className="col-md-6">
                     <label className="form-label">Marka</label>
                     <input className="form-control" required value={form.brand} onChange={e => setForm({ ...form, brand: e.target.value })} />
                   </div>
+                  <div className="col-md-6">
+                    <label className="form-label">SKU</label>
+                    <input className="form-control" required value={form.sku} onChange={e => { setSkuTouched(true); setForm({ ...form, sku: e.target.value }); }} />
+                    <div className="form-text">Ad veya satış fiyatına göre otomatik dolabilir. İsterseniz değiştirebilirsiniz.</div>
+                  </div>
+                  <div className="col-md-6">
+                    <label className="form-label">Kategori</label>
+                    <select className="form-select" value={form.category} onChange={e => setForm({ ...form, category: e.target.value })}>
+                      <option value="">(Seçilmedi)</option>
+                      {categories.map(c => (
+                        <option key={c._id} value={c._id}>{c.name}</option>
+                      ))}
+                    </select>
+                  </div>
                   <div className="col-12">
                     <label className="form-label">Açıklama</label>
                     <textarea className="form-control" rows="2" required value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} />
-                  </div>
-                  <div className="col-md-4">
-                    <label className="form-label">SKU</label>
-                    <input className="form-control" required value={form.sku} onChange={e => setForm({ ...form, sku: e.target.value })} />
                   </div>
                   <div className="col-md-4">
                     <label className="form-label">Alış Fiyatı</label>
@@ -351,7 +410,16 @@ export default function Products() {
                   </div>
                   <div className="col-md-4">
                     <label className="form-label">Satış Fiyatı</label>
-                    <input type="number" min="0" step="0.01" className="form-control" required value={form.sellingPrice} onChange={e => setForm({ ...form, sellingPrice: e.target.value })} />
+                    <input type="number" min="0" step="0.01" className="form-control" required value={form.sellingPrice} onChange={e => {
+                      const val = e.target.value;
+                      setForm(prev => {
+                        const next = { ...prev, sellingPrice: val };
+                        if (!skuTouched) {
+                          next.sku = generateSku(prev.name, val);
+                        }
+                        return next;
+                      });
+                    }} />
                   </div>
                   <div className="col-md-4">
                     <label className="form-label">Toptan Fiyatı</label>
@@ -439,6 +507,15 @@ export default function Products() {
                   <div className="col-md-6">
                     <label className="form-label">Marka</label>
                     <input className="form-control" required value={editForm.brand} onChange={e => setEditForm({ ...editForm, brand: e.target.value })} />
+                  </div>
+                  <div className="col-md-6">
+                    <label className="form-label">Kategori</label>
+                    <select className="form-select" value={editForm.category} onChange={e => setEditForm({ ...editForm, category: e.target.value })}>
+                      <option value="">(Seçilmedi)</option>
+                      {categories.map(c => (
+                        <option key={c._id} value={c._id}>{c.name}</option>
+                      ))}
+                    </select>
                   </div>
                   <div className="col-12">
                     <label className="form-label">Açıklama</label>

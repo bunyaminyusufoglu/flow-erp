@@ -124,13 +124,16 @@ export default function Settings() {
   return (
     <div className="container-fluid">
       <div className="row">
-        <div className="col-auto p-0">
+        <div className="col-auto p-0 d-none d-lg-block">
           <Sidebar />
         </div>
         <div className="col">
           <div className="py-4">
             <div className="d-flex justify-content-between align-items-center mb-3">
-              <h1 className="h4 mb-0">Ayarlar</h1>
+              <div className="d-flex align-items-center gap-2">
+                <button className="btn btn-outline-secondary d-lg-none" onClick={() => { try { document.body.classList.add('sidebar-open'); } catch {} }}>☰</button>
+                <h1 className="h4 mb-0">Ayarlar</h1>
+              </div>
             </div>
 
             <div className="row g-3">

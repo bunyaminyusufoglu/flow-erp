@@ -10,19 +10,15 @@ export default function Categories() {
   const [pages, setPages] = useState(1);
   const [total, setTotal] = useState(0);
   const [search, setSearch] = useState('');
-  const [sortBy, setSortBy] = useState('sortOrder');
+  const [sortBy, setSortBy] = useState('name');
   const [sortOrder, setSortOrder] = useState('asc');
   const limit = 10;
   const [showCreate, setShowCreate] = useState(false);
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState('');
-  const [parents, setParents] = useState([]);
   const [form, setForm] = useState({
     name: '',
-    description: '',
-    parent: '',
-    status: 'active',
-    sortOrder: 0
+    status: 'active'
   });
 
   // Edit/Delete state
@@ -31,10 +27,7 @@ export default function Categories() {
   const [activeCategory, setActiveCategory] = useState(null);
   const [editForm, setEditForm] = useState({
     name: '',
-    description: '',
-    parent: '',
-    status: 'active',
-    sortOrder: 0
+    status: 'active'
   });
   const [updating, setUpdating] = useState(false);
   const [updateError, setUpdateError] = useState('');
@@ -80,24 +73,7 @@ export default function Categories() {
     };
   }, [showCreate, showEdit, showDelete]);
 
-  // Create/Edit modal açıkken parent seçeneklerini çek
-  useEffect(() => {
-    let cancelled = false;
-    async function fetchParents() {
-      try {
-        if (!(showCreate || showEdit)) return;
-        const res = await fetch(`${apiBase}/api/categories?limit=1000&sortBy=name&sortOrder=asc`);
-        const data = await res.json();
-        if (!cancelled && data?.success) {
-          setParents(data.data || []);
-        }
-      } catch {
-        if (!cancelled) setParents([]);
-      }
-    }
-    fetchParents();
-    return () => { cancelled = true; };
-  }, [apiBase, showCreate, showEdit]);
+  // Parent seçenekleri kaldırıldı (sade model)
 
   function toggleSort(field) {
     if (sortBy === field) {
@@ -115,10 +91,7 @@ export default function Categories() {
       setCreateError('');
       const body = {
         name: form.name,
-        description: form.description || undefined,
-        parent: form.parent || undefined,
-        status: form.status,
-        sortOrder: Number(form.sortOrder || 0)
+        status: form.status
       };
       const res = await fetch(`${apiBase}/api/categories`, {
         method: 'POST',
@@ -130,7 +103,7 @@ export default function Categories() {
         throw new Error(data?.message || 'Kaydetme hatası');
       }
       setShowCreate(false);
-      setForm({ name: '', description: '', parent: '', status: 'active', sortOrder: 0 });
+      setForm({ name: '', status: 'active' });
       setPage(1);
       setSearch(s => s);
     } catch (err) {
@@ -144,10 +117,7 @@ export default function Categories() {
     setActiveCategory(cat);
     setEditForm({
       name: cat.name || '',
-      description: cat.description || '',
-      parent: cat.parent?._id || '',
-      status: cat.status || 'active',
-      sortOrder: cat.sortOrder ?? 0
+      status: cat.status || 'active'
     });
     setUpdateError('');
     setShowEdit(true);
@@ -166,10 +136,7 @@ export default function Categories() {
       setUpdateError('');
       const body = {
         name: editForm.name,
-        description: editForm.description || undefined,
-        parent: editForm.parent || undefined,
-        status: editForm.status,
-        sortOrder: Number(editForm.sortOrder || 0)
+        status: editForm.status
       };
       const res = await fetch(`${apiBase}/api/categories/${activeCategory._id}`, {
         method: 'PUT',
@@ -213,13 +180,16 @@ export default function Categories() {
     <>
     <div className="container-fluid">
       <div className="row">
-        <div className="col-auto p-0">
+        <div className="col-auto p-0 d-none d-lg-block">
           <Sidebar />
         </div>
         <div className="col">
           <div className="py-4">
             <div className="d-flex justify-content-between align-items-center mb-3">
-              <h1 className="h4 mb-0">Kategoriler</h1>
+              <div className="d-flex align-items-center gap-2">
+                <button className="btn btn-outline-secondary d-lg-none" onClick={() => { try { document.body.classList.add('sidebar-open'); } catch {} }}>☰</button>
+                <h1 className="h4 mb-0">Kategoriler</h1>
+              </div>
               <div className="d-flex gap-2">
                 <input
                   className="form-control"
@@ -240,10 +210,7 @@ export default function Categories() {
                   <thead className="table-light">
                     <tr>
                       <th style={{ cursor: 'pointer' }} onClick={() => toggleSort('name')}>Ad</th>
-                      <th>Ana Kategori</th>
-                      <th className="text-center">Seviye</th>
                       <th className="text-center">Ürün</th>
-                      <th style={{ cursor: 'pointer' }} onClick={() => toggleSort('sortOrder')}>Sıra</th>
                       <th>Durum</th>
                       <th className="text-end">İşlemler</th>
                     </tr>
@@ -251,24 +218,20 @@ export default function Categories() {
                   <tbody>
                     {loading ? (
                       <tr>
-                        <td colSpan="7" className="text-center text-muted py-4">Yükleniyor...</td>
+                        <td colSpan="4" className="text-center text-muted py-4">Yükleniyor...</td>
                       </tr>
                     ) : categories.length === 0 ? (
                       <tr>
-                        <td colSpan="7" className="text-center text-muted py-4">Kayıt bulunamadı</td>
+                        <td colSpan="4" className="text-center text-muted py-4">Kayıt bulunamadı</td>
                       </tr>
                     ) : categories.map(c => (
                       <tr key={c._id}>
                         <td>
                           <div className="fw-semibold">{c.name}</div>
-                          <div className="small text-muted text-truncate" style={{ maxWidth: 420 }}>{c.description}</div>
                         </td>
-                        <td>{c.parent?.name || '-'}</td>
-                        <td className="text-center">{c.level ?? '-'}</td>
                         <td className="text-center">
                           <span className="badge badge-accent-soft">{c.productCount ?? 0}</span>
                         </td>
-                        <td>{c.sortOrder}</td>
                         <td>
                           {c.status === 'active' && <span className="badge text-bg-success">Aktif</span>}
                           {c.status === 'inactive' && <span className="badge text-bg-secondary">Pasif</span>}
@@ -321,23 +284,6 @@ export default function Categories() {
                       <option value="inactive">Pasif</option>
                     </select>
                   </div>
-                  <div className="col-12">
-                    <label className="form-label">Açıklama</label>
-                    <textarea className="form-control" rows="2" value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} />
-                  </div>
-                  <div className="col-md-6">
-                    <label className="form-label">Ana Kategori</label>
-                    <select className="form-select" value={form.parent} onChange={e => setForm({ ...form, parent: e.target.value })}>
-                      <option value="">(Yok)</option>
-                      {parents.map(p => (
-                        <option key={p._id} value={p._id}>{p.name}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="col-md-6">
-                    <label className="form-label">Sıra</label>
-                    <input type="number" className="form-control" value={form.sortOrder} onChange={e => setForm({ ...form, sortOrder: e.target.value })} />
-                  </div>
                 </div>
               </div>
               <div className="modal-footer">
@@ -374,23 +320,6 @@ export default function Categories() {
                       <option value="inactive">Pasif</option>
                     </select>
                   </div>
-                  <div className="col-12">
-                    <label className="form-label">Açıklama</label>
-                    <textarea className="form-control" rows="2" value={editForm.description} onChange={e => setEditForm({ ...editForm, description: e.target.value })} />
-                  </div>
-                  <div className="col-md-6">
-                    <label className="form-label">Ana Kategori</label>
-                    <select className="form-select" value={editForm.parent} onChange={e => setEditForm({ ...editForm, parent: e.target.value })}>
-                      <option value="">(Yok)</option>
-                      {parents.map(p => (
-                        <option key={p._id} value={p._id}>{p.name}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="col-md-6">
-                    <label className="form-label">Sıra</label>
-                    <input type="number" className="form-control" value={editForm.sortOrder} onChange={e => setEditForm({ ...editForm, sortOrder: e.target.value })} />
-                  </div>
                 </div>
               </div>
               <div className="modal-footer">
@@ -413,7 +342,7 @@ export default function Categories() {
             </div>
             <div className="modal-body">
               <p><strong>{activeCategory.name}</strong> kategorisini silmek istediğinize emin misiniz?</p>
-              <p className="text-muted small mb-0">Not: Alt kategorisi veya ürün bağlı ise silinemez.</p>
+              <p className="text-muted small mb-0">Not: Ürün bağlı ise silinemez.</p>
             </div>
             <div className="modal-footer">
               <button type="button" className="btn btn-outline-secondary" onClick={() => setShowDelete(false)} disabled={deleting}>İptal</button>
