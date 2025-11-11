@@ -7,6 +7,7 @@ import Stores from './pages/Stores';
 import Shipments from './pages/Shipments';
 import Accounts from './pages/Accounts';
 import Settings from './pages/Settings';
+import Barcodes from './pages/Barcodes';
 
 function App() {
   const isAuthenticated = !!localStorage.getItem('token');
@@ -16,6 +17,7 @@ function App() {
       <Route path="/login" element={<Login />} />
       <Route path="/dashboard" element={<Dashboard />} />
       <Route path="/products" element={<Products />} />
+      <Route path="/barcodes" element={<Barcodes />} />
       <Route path="/categories" element={<Categories />} />
       <Route path="/stores" element={<Stores />} />
       <Route path="/accounts" element={<Accounts />} />

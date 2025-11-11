@@ -21,6 +21,7 @@ export default function Products() {
     name: '',
     description: '',
     sku: '',
+    barcode: '',
     brand: '',
     purchasePrice: '',
     sellingPrice: '',
@@ -41,6 +42,7 @@ export default function Products() {
     name: '',
     description: '',
     sku: '',
+    barcode: '',
     brand: '',
     purchasePrice: '',
     sellingPrice: '',
@@ -70,6 +72,25 @@ export default function Products() {
     if (!isFinite(n) || n <= 0) return '';
     const formatted = Number.isInteger(n) ? String(Math.trunc(n)) : n.toFixed(2).replace(/\.?0+$/, '');
     return `${letter.toUpperCase()}-${formatted}`;
+  }
+
+  // EAN-13 barkod üretimi (Türkiye ön eki 869 ile)
+  function generateEAN13() {
+    const prefix = '869'; // TR
+    // 9 rastgele rakam üret -> toplam 12 rakam (kontrol hanesi hariç)
+    let base = prefix;
+    for (let i = 0; i < 9; i++) {
+      base += Math.floor(Math.random() * 10).toString();
+    }
+    // Checksum hesapla
+    const digits = base.split('').map(d => parseInt(d, 10));
+    const sum = digits.reduce((acc, d, idx) => {
+      // Sağdan değil soldan indekslendiği için: tek indeksler 3 ile çarpılır (EAN kuralı: 12 hane için sağdan sayınca tekler 3'tür)
+      // Soldan 0-based için: (idx % 2 === 0) -> 1x, (idx % 2 === 1) -> 3x, çünkü 12 haneli dizide bu dağılım geçerlidir (prefix sabit).
+      return acc + d * (idx % 2 === 0 ? 1 : 3);
+    }, 0);
+    const check = (10 - (sum % 10)) % 10;
+    return base + String(check);
   }
 
   useEffect(() => {
@@ -128,6 +149,15 @@ export default function Products() {
     };
   }, [showCreate, showView, showEdit, showDelete]);
 
+  // Yeni ürün modal açıldığında otomatik barkod üret
+  useEffect(() => {
+    if (showCreate) {
+      const code = generateEAN13();
+      setForm(prev => ({ ...prev, barcode: code, sku: code }));
+      setSkuTouched(true);
+    }
+  }, [showCreate]);
+
   function toggleSort(field) {
     if (sortBy === field) {
       setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc');
@@ -142,34 +172,51 @@ export default function Products() {
     try {
       setCreating(true);
       setCreateError('');
-      const body = {
-        name: form.name,
-        description: form.description,
-        sku: form.sku?.toUpperCase(),
-        brand: form.brand,
-        purchasePrice: Number(form.purchasePrice || 0),
-        sellingPrice: Number(form.sellingPrice || 0),
-        wholesalePrice: form.wholesalePrice === '' ? undefined : Number(form.wholesalePrice),
-        stockQuantity: Number(form.stockQuantity || 0),
-        unit: form.unit,
-        status: form.status,
-        category: form.category || undefined
-      };
-      const res = await fetch(`${apiBase}/api/products`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body)
-      });
-      const data = await res.json();
-      if (!res.ok || !data?.success) {
-        throw new Error(data?.message || 'Kaydetme hatası');
+
+      // Maksimum 1 kere çakışma durumunda yeniden barkod üretip dene
+      let localForm = { ...form };
+      for (let attempt = 0; attempt < 2; attempt++) {
+        const body = {
+          name: localForm.name,
+          description: localForm.description,
+          sku: String(localForm.barcode || localForm.sku || '').toUpperCase(),
+          barcode: String(localForm.barcode || localForm.sku || ''),
+          brand: localForm.brand,
+          purchasePrice: Number(localForm.purchasePrice || 0),
+          sellingPrice: Number(localForm.sellingPrice || 0),
+          wholesalePrice: localForm.wholesalePrice === '' ? undefined : Number(localForm.wholesalePrice),
+          stockQuantity: Number(localForm.stockQuantity || 0),
+          unit: localForm.unit,
+          status: localForm.status,
+          category: localForm.category || undefined
+        };
+        const res = await fetch(`${apiBase}/api/products`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body)
+        });
+        const data = await res.json();
+        if (res.ok && data?.success) {
+          // Başarılı: listeyi yenile
+          setShowCreate(false);
+          setForm({ name: '', description: '', sku: '', barcode: '', brand: '', purchasePrice: '', sellingPrice: '', wholesalePrice: '', stockQuantity: '', unit: 'adet', status: 'active', category: '' });
+          setPage(1);
+          // trigger fetch (effect deps)
+          setSearch(s => s);
+          return;
+        } else {
+          const message = data?.message || 'Kaydetme hatası';
+          // Duplicate ise otomatik yeni barkod üret ve tekrar dene
+          if (/kullanımda/i.test(message) && attempt === 0) {
+            const code = generateEAN13();
+            localForm.barcode = code;
+            localForm.sku = code;
+            setForm(prev => ({ ...prev, barcode: code, sku: code }));
+            continue;
+          }
+          throw new Error(message);
+        }
       }
-      // Başarılı: listeyi yenile
-      setShowCreate(false);
-      setForm({ name: '', description: '', sku: '', brand: '', purchasePrice: '', sellingPrice: '', wholesalePrice: '', stockQuantity: '', unit: 'adet', status: 'active', category: '' });
-      setPage(1);
-      // trigger fetch (effect deps)
-      setSearch(s => s);
     } catch (err) {
       setCreateError(err.message || 'Ürün eklenemedi');
     } finally {
@@ -187,7 +234,8 @@ export default function Products() {
     setEditForm({
       name: product.name || '',
       description: product.description || '',
-      sku: product.sku || '',
+      sku: product.sku || product.barcode || '',
+      barcode: product.barcode || product.sku || '',
       brand: product.brand || '',
       purchasePrice: product.purchasePrice ?? '',
       sellingPrice: product.sellingPrice ?? '',
@@ -212,31 +260,46 @@ export default function Products() {
     try {
       setUpdating(true);
       setUpdateError('');
-      const body = {
-        name: editForm.name,
-        description: editForm.description,
-        sku: editForm.sku?.toUpperCase(),
-        brand: editForm.brand,
-        purchasePrice: Number(editForm.purchasePrice || 0),
-        sellingPrice: Number(editForm.sellingPrice || 0),
-        wholesalePrice: editForm.wholesalePrice === '' ? undefined : Number(editForm.wholesalePrice),
-        stockQuantity: Number(editForm.stockQuantity || 0),
-        unit: editForm.unit,
-        status: editForm.status,
-        category: editForm.category || undefined
-      };
-      const res = await fetch(`${apiBase}/api/products/${editProduct._id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body)
-      });
-      const data = await res.json();
-      if (!res.ok || !data?.success) {
-        throw new Error(data?.message || 'Güncelleme hatası');
+
+      let localForm = { ...editForm };
+      for (let attempt = 0; attempt < 2; attempt++) {
+        const body = {
+          name: localForm.name,
+          description: localForm.description,
+          sku: String(localForm.barcode || localForm.sku || '').toUpperCase(),
+          barcode: String(localForm.barcode || localForm.sku || ''),
+          brand: localForm.brand,
+          purchasePrice: Number(localForm.purchasePrice || 0),
+          sellingPrice: Number(localForm.sellingPrice || 0),
+          wholesalePrice: localForm.wholesalePrice === '' ? undefined : Number(localForm.wholesalePrice),
+          stockQuantity: Number(localForm.stockQuantity || 0),
+          unit: localForm.unit,
+          status: localForm.status,
+          category: localForm.category || undefined
+        };
+        const res = await fetch(`${apiBase}/api/products/${editProduct._id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body)
+        });
+        const data = await res.json();
+        if (res.ok && data?.success) {
+          // Update list in place
+          setProducts(prev => prev.map(p => p._id === data.data._id ? data.data : p));
+          setShowEdit(false);
+          return;
+        } else {
+          const message = data?.message || 'Güncelleme hatası';
+          if (/kullanımda/i.test(message) && attempt === 0) {
+            const code = generateEAN13();
+            localForm.barcode = code;
+            localForm.sku = code;
+            setEditForm(prev => ({ ...prev, barcode: code, sku: code }));
+            continue;
+          }
+          throw new Error(message);
+        }
       }
-      // Update list in place
-      setProducts(prev => prev.map(p => p._id === data.data._id ? data.data : p));
-      setShowEdit(false);
     } catch (err) {
       setUpdateError(err.message || 'Ürün güncellenemedi');
     } finally {
@@ -280,7 +343,7 @@ export default function Products() {
               <div className="d-flex gap-2">
                 <input
                   className="form-control"
-                  placeholder="Ara (ad, açıklama, marka, SKU)"
+                  placeholder="Ara (ad, açıklama, marka, barkod)"
                   value={search}
                   onChange={e => { setPage(1); setSearch(e.target.value); }}
                   style={{ maxWidth: 320 }}
@@ -297,7 +360,7 @@ export default function Products() {
                   <thead className="table-light">
                     <tr>
                       <th style={{ cursor: 'pointer' }} onClick={() => toggleSort('name')}>Ad</th>
-                      <th>SKU</th>
+                      <th>Barkod</th>
                       <th>Marka</th>
                       <th className="text-end">Toptan Fiyatı</th>
                       <th className="text-end" style={{ cursor: 'pointer' }} onClick={() => toggleSort('sellingPrice')}>Satış Fiyatı</th>
@@ -321,7 +384,7 @@ export default function Products() {
                           <div className="fw-semibold">{p.name}</div>
                           <div className="small text-muted text-truncate" style={{ maxWidth: 420 }}>{p.description}</div>
                         </td>
-                        <td><span className="badge badge-primary-soft">{p.sku}</span></td>
+                        <td><span className="badge badge-primary-soft">{p.barcode || p.sku}</span></td>
                         <td>{p.brand}</td>
                         <td className="text-end">{new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(p.wholesalePrice || 0)}</td>
                         <td className="text-end">{new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(p.sellingPrice || 0)}</td>
@@ -387,9 +450,16 @@ export default function Products() {
                     <input className="form-control" required value={form.brand} onChange={e => setForm({ ...form, brand: e.target.value })} />
                   </div>
                   <div className="col-md-6">
-                    <label className="form-label">SKU</label>
-                    <input className="form-control" required value={form.sku} onChange={e => { setSkuTouched(true); setForm({ ...form, sku: e.target.value }); }} />
-                    <div className="form-text">Ad veya satış fiyatına göre otomatik dolabilir. İsterseniz değiştirebilirsiniz.</div>
+                    <label className="form-label">Barkod</label>
+                    <div className="input-group">
+                      <input className="form-control" required readOnly value={form.barcode} />
+                      <button type="button" className="btn btn-outline-secondary" onClick={() => {
+                        const code = generateEAN13();
+                        setForm(prev => ({ ...prev, barcode: code, sku: code }));
+                        setSkuTouched(true);
+                      }}>Yenile</button>
+                    </div>
+                    <div className="form-text">Otomatik oluşturulur. İsterseniz yenileyebilirsiniz.</div>
                   </div>
                   <div className="col-md-6">
                     <label className="form-label">Kategori</label>
@@ -472,7 +542,7 @@ export default function Products() {
             <div className="modal-body">
               <div className="mb-2"><strong>Ad:</strong> {viewProduct.name}</div>
               <div className="mb-2"><strong>Marka:</strong> {viewProduct.brand}</div>
-              <div className="mb-2"><strong>SKU:</strong> <span className="badge badge-primary-soft">{viewProduct.sku}</span></div>
+              <div className="mb-2"><strong>Barkod:</strong> <span className="badge badge-primary-soft">{viewProduct.barcode || viewProduct.sku}</span></div>
               <div className="mb-2"><strong>Satış Fiyatı:</strong> {new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(viewProduct.sellingPrice || 0)}</div>
               <div className="mb-2"><strong>Alış Fiyatı:</strong> {new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(viewProduct.purchasePrice || 0)}</div>
                 <div className="mb-2"><strong>Toptan Fiyatı:</strong> {new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(viewProduct.wholesalePrice || 0)}</div>
@@ -522,8 +592,15 @@ export default function Products() {
                     <textarea className="form-control" rows="2" required value={editForm.description} onChange={e => setEditForm({ ...editForm, description: e.target.value })} />
                   </div>
                   <div className="col-md-4">
-                    <label className="form-label">SKU</label>
-                    <input className="form-control" required value={editForm.sku} onChange={e => setEditForm({ ...editForm, sku: e.target.value })} />
+                    <label className="form-label">Barkod</label>
+                    <div className="input-group">
+                      <input className="form-control" required readOnly value={editForm.barcode} />
+                      <button type="button" className="btn btn-outline-secondary" onClick={() => {
+                        const code = generateEAN13();
+                        setEditForm(prev => ({ ...prev, barcode: code, sku: code }));
+                      }}>Yenile</button>
+                    </div>
+                    <div className="form-text">Otomatik oluşturulur. İsterseniz yenileyebilirsiniz.</div>
                   </div>
                   <div className="col-md-4">
                     <label className="form-label">Alış Fiyatı</label>

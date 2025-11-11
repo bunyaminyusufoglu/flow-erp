@@ -39,11 +39,17 @@ export default function Sidebar() {
         <NavLink to="/stores" className={({ isActive }) => `nav-link ${isActive ? 'active' : 'text-dark'}`}>
           Mağazalar
         </NavLink>
+
         <NavLink to="/accounts" className={({ isActive }) => `nav-link ${isActive ? 'active' : 'text-dark'}`}>
           Cari Hesaplar
         </NavLink>
+        
         <NavLink to="/shipments" className={({ isActive }) => `nav-link ${isActive ? 'active' : 'text-dark'}`}>
           Sevkiyatlar
+        </NavLink>
+
+        <NavLink to="/barcodes" className={({ isActive }) => `nav-link ${isActive ? 'active' : 'text-dark'}`}>
+          Barkod Oluştur
         </NavLink>
         
         <NavLink to="/settings" className={({ isActive }) => `nav-link ${isActive ? 'active' : 'text-dark'}`}>
@@ -71,6 +77,10 @@ export default function Sidebar() {
         <nav className="nav flex-column p-2 gap-1">
           <NavLink to="/dashboard" onClick={closeMobileSidebar} className={({ isActive }) => `nav-link ${isActive ? 'active' : 'text-dark'}`}>
             Ana Sayfa
+          </NavLink>
+
+          <NavLink to="/barcodes" onClick={closeMobileSidebar} className={({ isActive }) => `nav-link ${isActive ? 'active' : 'text-dark'}`}>
+            Barkod Oluştur
           </NavLink>
 
           <NavLink to="/categories" onClick={closeMobileSidebar} className={({ isActive }) => `nav-link ${isActive ? 'active' : 'text-dark'}`}>
