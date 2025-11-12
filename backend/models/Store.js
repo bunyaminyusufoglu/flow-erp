@@ -10,7 +10,7 @@ const storeSchema = new mongoose.Schema({
   },
   code: {
     type: String,
-    required: [true, 'Mağaza kodu gereklidir'],
+    required: false,
     unique: true,
     trim: true,
     uppercase: true,
@@ -21,18 +21,18 @@ const storeSchema = new mongoose.Schema({
   contact: {
     phone: {
       type: String,
-      required: [true, 'Telefon numarası gereklidir'],
+      required: false,
       trim: true
     },
     email: {
       type: String,
-      required: [true, 'Email adresi gereklidir'],
+      required: false,
       trim: true,
       lowercase: true
     },
     manager: {
       type: String,
-      required: [true, 'Müdür adı gereklidir'],
+      required: false,
       trim: true
     }
   },
@@ -41,27 +41,27 @@ const storeSchema = new mongoose.Schema({
   address: {
     street: {
       type: String,
-      required: [true, 'Adres gereklidir'],
+      required: false,
       trim: true
     },
     city: {
       type: String,
-      required: [true, 'Şehir gereklidir'],
+      required: false,
       trim: true
     },
     state: {
       type: String,
-      required: [true, 'İl gereklidir'],
+      required: false,
       trim: true
     },
     zipCode: {
       type: String,
-      required: [true, 'Posta kodu gereklidir'],
+      required: false,
       trim: true
     },
     country: {
       type: String,
-      required: [true, 'Ülke gereklidir'],
+      required: false,
       trim: true,
       default: 'Türkiye'
     }
@@ -167,6 +167,27 @@ storeSchema.index({ 'address.city': 1 });
 storeSchema.pre('save', function(next) {
   this.updatedAt = Date.now();
   next();
+});
+
+// Otomatik 6 haneli kod üretimi (benzersiz olacak şekilde dener) - kaydetmeden hemen önce
+storeSchema.pre('save', async function(next) {
+  if (this.code) return next();
+  try {
+    for (let i = 0; i < 10; i++) {
+      const candidate = String(Math.floor(100000 + Math.random() * 900000)); // 6 rakam
+      const existing = await this.constructor.findOne({ code: candidate }).lean();
+      if (!existing) {
+        this.code = candidate;
+        break;
+      }
+    }
+    if (!this.code) {
+      this.code = String(Math.floor(100000 + Math.random() * 900000));
+    }
+    next();
+  } catch (err) {
+    next(err);
+  }
 });
 
 module.exports = mongoose.model('Store', storeSchema);

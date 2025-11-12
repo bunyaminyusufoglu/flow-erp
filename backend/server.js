@@ -100,6 +100,23 @@ app.use((req, res) => {
 const startServer = async () => {
   try {
     await connectDB();
+
+    // Ensure obsolete indexes are removed and required ones exist
+    try {
+      const Store = require('./models/Store');
+      const indexes = await Store.collection.indexes();
+      // Drop legacy unique index on storeId if present (causes duplicate key on null)
+      const legacyIdx = indexes.find(ix => ix.name === 'storeId_1');
+      if (legacyIdx) {
+        await Store.collection.dropIndex('storeId_1');
+        console.log('🧹 Dropped legacy index storeId_1 on stores');
+      }
+      // Ensure unique index on code exists
+      await Store.collection.createIndex({ code: 1 }, { unique: true });
+      console.log('✅ Ensured unique index on stores.code');
+    } catch (idxErr) {
+      console.warn('Index sync warning:', idxErr.message);
+    }
     
     app.listen(PORT, () => {
       console.log(`🚀 Server running on port ${PORT}`);

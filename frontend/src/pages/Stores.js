@@ -268,9 +268,11 @@ export default function Stores() {
                           </div>
                           <span className={`badge ${store.status === 'active' ? 'text-bg-success' : store.status === 'inactive' ? 'text-bg-secondary' : 'text-bg-warning'}`}>{statusLabel(store.status)}</span>
                         </div>
-                        <div className="small text-muted mb-3">
-                          {store.address?.city}, {store.address?.state} • {typeLabel(store.type)}
-                        </div>
+                        {(store.address?.city || store.address?.state || store.type) && (
+                          <div className="small text-muted mb-3">
+                            {[store.address?.city, store.address?.state].filter(Boolean).join(', ')}{(store.address?.city || store.address?.state) && store.type ? ' • ' : ''}{typeLabel(store.type)}
+                          </div>
+                        )}
                         <div className="mt-auto d-flex gap-2">
                           <button className="btn btn-outline-secondary btn-sm" onClick={() => openTransactions(store)}>İşlemler</button>
                           <button className="btn btn-outline-primary btn-sm" onClick={() => openEdit(store)}>Düzenle</button>
@@ -309,65 +311,7 @@ export default function Stores() {
                     <label className="form-label">Ad</label>
                     <input className="form-control" required value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} />
                   </div>
-                  <div className="col-md-6">
-                    <label className="form-label">Kod</label>
-                    <input className="form-control" required value={form.code} onChange={e => setForm({ ...form, code: e.target.value.toUpperCase() })} />
-                  </div>
-
-                  <div className="col-md-4">
-                    <label className="form-label">Telefon</label>
-                    <input className="form-control" required value={form.contact.phone} onChange={e => setForm({ ...form, contact: { ...form.contact, phone: e.target.value } })} />
-                  </div>
-                  <div className="col-md-4">
-                    <label className="form-label">E-posta</label>
-                    <input type="email" className="form-control" required value={form.contact.email} onChange={e => setForm({ ...form, contact: { ...form.contact, email: e.target.value } })} />
-                  </div>
-                  <div className="col-md-4">
-                    <label className="form-label">Müdür</label>
-                    <input className="form-control" required value={form.contact.manager} onChange={e => setForm({ ...form, contact: { ...form.contact, manager: e.target.value } })} />
-                  </div>
-
-                  <div className="col-md-6">
-                    <label className="form-label">Adres</label>
-                    <input className="form-control" required value={form.address.street} onChange={e => setForm({ ...form, address: { ...form.address, street: e.target.value } })} />
-                  </div>
-                  <div className="col-md-3">
-                    <label className="form-label">Şehir</label>
-                    <input className="form-control" required value={form.address.city} onChange={e => setForm({ ...form, address: { ...form.address, city: e.target.value } })} />
-                  </div>
-                  <div className="col-md-3">
-                    <label className="form-label">İl</label>
-                    <input className="form-control" required value={form.address.state} onChange={e => setForm({ ...form, address: { ...form.address, state: e.target.value } })} />
-                  </div>
-                  <div className="col-md-3">
-                    <label className="form-label">Posta Kodu</label>
-                    <input className="form-control" required value={form.address.zipCode} onChange={e => setForm({ ...form, address: { ...form.address, zipCode: e.target.value } })} />
-                  </div>
-                  <div className="col-md-3">
-                    <label className="form-label">Ülke</label>
-                    <input className="form-control" required value={form.address.country} onChange={e => setForm({ ...form, address: { ...form.address, country: e.target.value } })} />
-                  </div>
-
-                  <div className="col-md-3">
-                    <label className="form-label">Tip</label>
-                    <select className="form-select" value={form.type} onChange={e => setForm({ ...form, type: e.target.value })}>
-                      <option value="store">Mağaza</option>
-                      <option value="warehouse">Depo</option>
-                      <option value="branch">Şube</option>
-                    </select>
-                  </div>
-                  <div className="col-md-3">
-                    <label className="form-label">Durum</label>
-                    <select className="form-select" value={form.status} onChange={e => setForm({ ...form, status: e.target.value })}>
-                      <option value="active">Aktif</option>
-                      <option value="inactive">Pasif</option>
-                      <option value="maintenance">Bakımda</option>
-                    </select>
-                  </div>
-                  <div className="col-12">
-                    <label className="form-label">Notlar</label>
-                    <textarea className="form-control" rows="2" value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} />
-                  </div>
+                  {/* Otomatik kod üretilecek; başka alan gerekmiyor */}
                 </div>
               </div>
               <div className="modal-footer">
@@ -485,47 +429,19 @@ export default function Stores() {
 
 function createEmptyStoreForm() {
   return {
-    name: '',
-    code: '',
-    contact: { phone: '', email: '', manager: '' },
-    address: { street: '', city: '', state: '', zipCode: '', country: 'Türkiye' },
-    type: 'store',
-    status: 'active',
-    notes: ''
+    name: ''
   };
 }
 
 function fillFormFromStore(store) {
   return {
-    name: store.name || '',
-    code: store.code || '',
-    contact: {
-      phone: store.contact?.phone || '',
-      email: store.contact?.email || '',
-      manager: store.contact?.manager || ''
-    },
-    address: {
-      street: store.address?.street || '',
-      city: store.address?.city || '',
-      state: store.address?.state || '',
-      zipCode: store.address?.zipCode || '',
-      country: store.address?.country || 'Türkiye'
-    },
-    type: store.type || 'store',
-    status: store.status || 'active',
-    notes: store.notes || ''
+    name: store.name || ''
   };
 }
 
 function buildStorePayload(form) {
   return {
-    name: form.name,
-    code: form.code,
-    contact: { phone: form.contact.phone, email: form.contact.email, manager: form.contact.manager },
-    address: { street: form.address.street, city: form.address.city, state: form.address.state, zipCode: form.address.zipCode, country: form.address.country },
-    type: form.type,
-    status: form.status,
-    notes: form.notes || undefined
+    name: form.name
   };
 }
 
