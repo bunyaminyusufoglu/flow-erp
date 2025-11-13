@@ -104,6 +104,8 @@ const startServer = async () => {
     // Ensure obsolete indexes are removed and required ones exist
     try {
       const Store = require('./models/Store');
+      const Category = require('./models/Category');
+      const Product = require('./models/Product');
       const indexes = await Store.collection.indexes();
       // Drop legacy unique index on storeId if present (causes duplicate key on null)
       const legacyIdx = indexes.find(ix => ix.name === 'storeId_1');
@@ -114,6 +116,28 @@ const startServer = async () => {
       // Ensure unique index on code exists
       await Store.collection.createIndex({ code: 1 }, { unique: true });
       console.log('✅ Ensured unique index on stores.code');
+
+      // Drop legacy slug index on categories if exists
+      try {
+        const catIndexes = await Category.collection.indexes();
+        if (catIndexes.find(ix => ix.name === 'slug_1')) {
+          await Category.collection.dropIndex('slug_1');
+          console.log('🧹 Dropped legacy index slug_1 on categories');
+        }
+      } catch (e) {
+        console.warn('Category index sync warning:', e.message);
+      }
+
+      // Drop legacy slug index on products if exists
+      try {
+        const prodIndexes = await Product.collection.indexes();
+        if (prodIndexes.find(ix => ix.name === 'slug_1')) {
+          await Product.collection.dropIndex('slug_1');
+          console.log('🧹 Dropped legacy index slug_1 on products');
+        }
+      } catch (e) {
+        console.warn('Product index sync warning:', e.message);
+      }
     } catch (idxErr) {
       console.warn('Index sync warning:', idxErr.message);
     }

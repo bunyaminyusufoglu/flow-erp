@@ -13,21 +13,13 @@ const accountSchema = new mongoose.Schema({
     trim: true,
     uppercase: true,
     unique: true,
-    required: [true, 'Cari kodu gereklidir'],
+    required: false,
     maxlength: [20, 'Cari kodu 20 karakterden fazla olamaz']
   },
   type: {
     type: String,
     enum: ['customer', 'supplier', 'other'],
     default: 'customer'
-  },
-
-  // İletişim Bilgileri
-  contact: {
-    phone: { type: String, trim: true },
-    email: { type: String, trim: true, lowercase: true },
-    taxNo: { type: String, trim: true },
-    responsible: { type: String, trim: true }
   },
 
   // Adres
@@ -50,11 +42,7 @@ const accountSchema = new mongoose.Schema({
     enum: ['active', 'inactive'],
     default: 'active'
   },
-  notes: {
-    type: String,
-    trim: true,
-    maxlength: [500, 'Notlar 500 karakteri aşamaz']
-  }
+
 }, {
   timestamps: true,
   toJSON: { virtuals: true },
@@ -71,6 +59,28 @@ accountSchema.virtual('balance').get(function() {
 accountSchema.index({ code: 1 });
 accountSchema.index({ name: 'text' });
 accountSchema.index({ type: 1, status: 1 });
+
+// Otomatik benzersiz cari kodu üret (mağazadaki mantıkla benzer)
+// 6 haneli rakam, 10 denemeye kadar benzersizlik kontrolü yapılır
+accountSchema.pre('save', async function(next) {
+  if (this.code) return next();
+  try {
+    for (let i = 0; i < 10; i++) {
+      const candidate = String(Math.floor(100000 + Math.random() * 900000));
+      const existing = await this.constructor.findOne({ code: candidate }).lean();
+      if (!existing) {
+        this.code = candidate;
+        break;
+      }
+    }
+    if (!this.code) {
+      this.code = String(Math.floor(100000 + Math.random() * 900000));
+    }
+    next();
+  } catch (err) {
+    next(err);
+  }
+});
 
 module.exports = mongoose.model('Account', accountSchema);
 

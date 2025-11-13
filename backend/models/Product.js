@@ -8,12 +8,6 @@ const productSchema = new mongoose.Schema({
     trim: true,
     maxlength: [100, 'Ürün adı 100 karakterden fazla olamaz']
   },
-  description: {
-    type: String,
-    required: [true, 'Ürün açıklaması gereklidir'],
-    trim: true,
-    maxlength: [500, 'Açıklama 500 karakterden fazla olamaz']
-  },
   sku: {
     type: String,
     required: [true, 'SKU gereklidir'],
@@ -34,18 +28,8 @@ const productSchema = new mongoose.Schema({
     ref: 'Category',
     required: false // Kategori artık zorunlu değil
   },
-  brand: {
-    type: String,
-    required: [true, 'Marka gereklidir'],
-    trim: true
-  },
 
   // Fiyatlar
-  purchasePrice: {
-    type: Number,
-    required: [true, 'Alış fiyatı gereklidir'],
-    min: [0, 'Alış fiyatı negatif olamaz']
-  },
   sellingPrice: {
     type: Number,
     required: [true, 'Satış fiyatı gereklidir'],
@@ -134,7 +118,7 @@ const productSchema = new mongoose.Schema({
 });
 
 // Index'ler
-productSchema.index({ name: 'text', description: 'text', brand: 'text' });
+productSchema.index({ name: 'text' });
 productSchema.index({ category: 1 });
 productSchema.index({ status: 1 });
 productSchema.index({ createdAt: -1 });

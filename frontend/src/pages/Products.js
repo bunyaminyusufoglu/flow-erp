@@ -6,7 +6,6 @@ export default function Products() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [products, setProducts] = useState([]);
-  const [categories, setCategories] = useState([]);
   const [page, setPage] = useState(1);
   const [pages, setPages] = useState(1);
   const [total, setTotal] = useState(0);
@@ -19,17 +18,14 @@ export default function Products() {
   const [createError, setCreateError] = useState('');
   const [form, setForm] = useState({
     name: '',
-    description: '',
     sku: '',
     barcode: '',
-    brand: '',
     purchasePrice: '',
     sellingPrice: '',
     wholesalePrice: '',
     stockQuantity: '',
     unit: 'adet',
-    status: 'active',
-    category: ''
+    status: 'active'
   });
   const [skuTouched, setSkuTouched] = useState(false);
 
@@ -40,17 +36,14 @@ export default function Products() {
   const [editProduct, setEditProduct] = useState(null);
   const [editForm, setEditForm] = useState({
     name: '',
-    description: '',
     sku: '',
     barcode: '',
-    brand: '',
     purchasePrice: '',
     sellingPrice: '',
     wholesalePrice: '',
     stockQuantity: '',
     unit: 'adet',
-    status: 'active',
-    category: ''
+    status: 'active'
   });
   const [updating, setUpdating] = useState(false);
   const [updateError, setUpdateError] = useState('');
@@ -119,23 +112,7 @@ export default function Products() {
     return () => { isMounted = false; };
   }, [apiBase, page, search, sortBy, sortOrder]);
 
-  // Kategorileri önyükle (ad'a göre)
-  useEffect(() => {
-    let cancelled = false;
-    async function loadCategories() {
-      try {
-        const res = await fetch(`${apiBase}/api/categories?limit=1000&sortBy=name&sortOrder=asc&status=active`);
-        const data = await res.json();
-        if (!cancelled && data?.success) {
-          setCategories(Array.isArray(data.data) ? data.data : []);
-        }
-      } catch {
-        if (!cancelled) setCategories([]);
-      }
-    }
-    loadCategories();
-    return () => { cancelled = true; };
-  }, [apiBase]);
+  // Ürün kategorisi kullanılmıyor
 
   // Body scroll ve modal-open sınıfı yönetimi
   useEffect(() => {
@@ -178,17 +155,15 @@ export default function Products() {
       for (let attempt = 0; attempt < 2; attempt++) {
         const body = {
           name: localForm.name,
-          description: localForm.description,
           sku: String(localForm.barcode || localForm.sku || '').toUpperCase(),
           barcode: String(localForm.barcode || localForm.sku || ''),
-          brand: localForm.brand,
-          purchasePrice: Number(localForm.purchasePrice || 0),
+          // brand removed
+          // purchasePrice removed
           sellingPrice: Number(localForm.sellingPrice || 0),
           wholesalePrice: localForm.wholesalePrice === '' ? undefined : Number(localForm.wholesalePrice),
           stockQuantity: Number(localForm.stockQuantity || 0),
           unit: localForm.unit,
-          status: localForm.status,
-          category: localForm.category || undefined
+          status: localForm.status
         };
         const res = await fetch(`${apiBase}/api/products`, {
           method: 'POST',
@@ -199,7 +174,7 @@ export default function Products() {
         if (res.ok && data?.success) {
           // Başarılı: listeyi yenile
           setShowCreate(false);
-          setForm({ name: '', description: '', sku: '', barcode: '', brand: '', purchasePrice: '', sellingPrice: '', wholesalePrice: '', stockQuantity: '', unit: 'adet', status: 'active', category: '' });
+          setForm({ name: '', sku: '', barcode: '', purchasePrice: '', sellingPrice: '', wholesalePrice: '', stockQuantity: '', unit: 'adet', status: 'active' });
           setPage(1);
           // trigger fetch (effect deps)
           setSearch(s => s);
@@ -233,17 +208,14 @@ export default function Products() {
     setEditProduct(product);
     setEditForm({
       name: product.name || '',
-      description: product.description || '',
       sku: product.sku || product.barcode || '',
       barcode: product.barcode || product.sku || '',
-      brand: product.brand || '',
       purchasePrice: product.purchasePrice ?? '',
       sellingPrice: product.sellingPrice ?? '',
       wholesalePrice: product.wholesalePrice ?? '',
       stockQuantity: product.stockQuantity ?? '',
       unit: product.unit || 'adet',
-      status: product.status || 'active',
-      category: (product.category && (product.category._id || product.category)) || ''
+      status: product.status || 'active'
     });
     setUpdateError('');
     setShowEdit(true);
@@ -265,17 +237,15 @@ export default function Products() {
       for (let attempt = 0; attempt < 2; attempt++) {
         const body = {
           name: localForm.name,
-          description: localForm.description,
           sku: String(localForm.barcode || localForm.sku || '').toUpperCase(),
           barcode: String(localForm.barcode || localForm.sku || ''),
-          brand: localForm.brand,
-          purchasePrice: Number(localForm.purchasePrice || 0),
+          // brand removed
+          // purchasePrice removed
           sellingPrice: Number(localForm.sellingPrice || 0),
           wholesalePrice: localForm.wholesalePrice === '' ? undefined : Number(localForm.wholesalePrice),
           stockQuantity: Number(localForm.stockQuantity || 0),
           unit: localForm.unit,
-          status: localForm.status,
-          category: localForm.category || undefined
+          status: localForm.status
         };
         const res = await fetch(`${apiBase}/api/products/${editProduct._id}`, {
           method: 'PUT',
@@ -361,7 +331,6 @@ export default function Products() {
                     <tr>
                       <th style={{ cursor: 'pointer' }} onClick={() => toggleSort('name')}>Ad</th>
                       <th>Barkod</th>
-                      <th>Marka</th>
                       <th className="text-end">Toptan Fiyatı</th>
                       <th className="text-end" style={{ cursor: 'pointer' }} onClick={() => toggleSort('sellingPrice')}>Satış Fiyatı</th>
                       <th className="text-end">Stok</th>
@@ -380,12 +349,8 @@ export default function Products() {
                       </tr>
                     ) : products.map(p => (
                       <tr key={p._id}>
-                        <td>
-                          <div className="fw-semibold">{p.name}</div>
-                          <div className="small text-muted text-truncate" style={{ maxWidth: 420 }}>{p.description}</div>
-                        </td>
+                        <td><div className="fw-semibold">{p.name}</div></td>
                         <td><span className="badge badge-primary-soft">{p.barcode || p.sku}</span></td>
-                        <td>{p.brand}</td>
                         <td className="text-end">{new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(p.wholesalePrice || 0)}</td>
                         <td className="text-end">{new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(p.sellingPrice || 0)}</td>
                         <td className="text-end">{p.stockQuantity}</td>
@@ -446,10 +411,6 @@ export default function Products() {
                     }} />
                   </div>
                   <div className="col-md-6">
-                    <label className="form-label">Marka</label>
-                    <input className="form-control" required value={form.brand} onChange={e => setForm({ ...form, brand: e.target.value })} />
-                  </div>
-                  <div className="col-md-6">
                     <label className="form-label">Barkod</label>
                     <div className="input-group">
                       <input className="form-control" required readOnly value={form.barcode} />
@@ -461,23 +422,7 @@ export default function Products() {
                     </div>
                     <div className="form-text">Otomatik oluşturulur. İsterseniz yenileyebilirsiniz.</div>
                   </div>
-                  <div className="col-md-6">
-                    <label className="form-label">Kategori</label>
-                    <select className="form-select" value={form.category} onChange={e => setForm({ ...form, category: e.target.value })}>
-                      <option value="">(Seçilmedi)</option>
-                      {categories.map(c => (
-                        <option key={c._id} value={c._id}>{c.name}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="col-12">
-                    <label className="form-label">Açıklama</label>
-                    <textarea className="form-control" rows="2" required value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} />
-                  </div>
-                  <div className="col-md-4">
-                    <label className="form-label">Alış Fiyatı</label>
-                    <input type="number" min="0" step="0.01" className="form-control" required value={form.purchasePrice} onChange={e => setForm({ ...form, purchasePrice: e.target.value })} />
-                  </div>
+
                   <div className="col-md-4">
                     <label className="form-label">Satış Fiyatı</label>
                     <input type="number" min="0" step="0.01" className="form-control" required value={form.sellingPrice} onChange={e => {
@@ -541,14 +486,12 @@ export default function Products() {
             </div>
             <div className="modal-body">
               <div className="mb-2"><strong>Ad:</strong> {viewProduct.name}</div>
-              <div className="mb-2"><strong>Marka:</strong> {viewProduct.brand}</div>
               <div className="mb-2"><strong>Barkod:</strong> <span className="badge badge-primary-soft">{viewProduct.barcode || viewProduct.sku}</span></div>
               <div className="mb-2"><strong>Satış Fiyatı:</strong> {new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(viewProduct.sellingPrice || 0)}</div>
-              <div className="mb-2"><strong>Alış Fiyatı:</strong> {new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(viewProduct.purchasePrice || 0)}</div>
-                <div className="mb-2"><strong>Toptan Fiyatı:</strong> {new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(viewProduct.wholesalePrice || 0)}</div>
+              <div className="mb-2"><strong>Toptan Fiyatı:</strong> {new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(viewProduct.wholesalePrice || 0)}</div>
               <div className="mb-2"><strong>Stok:</strong> {viewProduct.stockQuantity} {viewProduct.unit}</div>
               <div className="mb-2"><strong>Durum:</strong> {viewProduct.status === 'active' ? 'Aktif' : viewProduct.status === 'inactive' ? 'Pasif' : 'Durduruldu'}</div>
-              <div className="mb-2"><strong>Açıklama:</strong><br />{viewProduct.description}</div>
+
             </div>
             <div className="modal-footer">
               <button type="button" className="btn btn-outline-secondary" onClick={() => setShowView(false)}>Kapat</button>
@@ -574,23 +517,7 @@ export default function Products() {
                     <label className="form-label">Ad</label>
                     <input className="form-control" required value={editForm.name} onChange={e => setEditForm({ ...editForm, name: e.target.value })} />
                   </div>
-                  <div className="col-md-6">
-                    <label className="form-label">Marka</label>
-                    <input className="form-control" required value={editForm.brand} onChange={e => setEditForm({ ...editForm, brand: e.target.value })} />
-                  </div>
-                  <div className="col-md-6">
-                    <label className="form-label">Kategori</label>
-                    <select className="form-select" value={editForm.category} onChange={e => setEditForm({ ...editForm, category: e.target.value })}>
-                      <option value="">(Seçilmedi)</option>
-                      {categories.map(c => (
-                        <option key={c._id} value={c._id}>{c.name}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="col-12">
-                    <label className="form-label">Açıklama</label>
-                    <textarea className="form-control" rows="2" required value={editForm.description} onChange={e => setEditForm({ ...editForm, description: e.target.value })} />
-                  </div>
+
                   <div className="col-md-4">
                     <label className="form-label">Barkod</label>
                     <div className="input-group">
@@ -602,10 +529,7 @@ export default function Products() {
                     </div>
                     <div className="form-text">Otomatik oluşturulur. İsterseniz yenileyebilirsiniz.</div>
                   </div>
-                  <div className="col-md-4">
-                    <label className="form-label">Alış Fiyatı</label>
-                    <input type="number" min="0" step="0.01" className="form-control" required value={editForm.purchasePrice} onChange={e => setEditForm({ ...editForm, purchasePrice: e.target.value })} />
-                  </div>
+
                   <div className="col-md-4">
                     <label className="form-label">Satış Fiyatı</label>
                     <input type="number" min="0" step="0.01" className="form-control" required value={editForm.sellingPrice} onChange={e => setEditForm({ ...editForm, sellingPrice: e.target.value })} />

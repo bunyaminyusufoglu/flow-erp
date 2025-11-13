@@ -179,8 +179,8 @@ export default function Accounts() {
       ['Cari', activeAccount.name || ''],
       ['Kod', activeAccount.code || ''],
       ['Dönem', periodLabel],
-      ['Toplam Gelir', summary.income || 0],
-      ['Toplam Gider', summary.expense || 0],
+      ['Toplam Alınan', summary.income || 0],
+      ['Toplam Verilen', summary.expense || 0],
       ['Bakiye', summary.balance || 0],
       [],
       ['Tarih', 'Açıklama', 'Tür', 'Kategori', 'Tutar (TRY)']
@@ -197,8 +197,8 @@ export default function Accounts() {
     });
 
     aoa.push([]);
-    aoa.push(['', '', 'Toplam Gelir', '', summary.income || 0]);
-    aoa.push(['', '', 'Toplam Gider', '', summary.expense || 0]);
+    aoa.push(['', '', 'Toplam Alınan', '', summary.income || 0]);
+    aoa.push(['', '', 'Toplam Verilen', '', summary.expense || 0]);
     aoa.push(['', '', 'Bakiye', '', summary.balance || 0]);
 
     const wb = XLSX.utils.book_new();
@@ -445,7 +445,7 @@ export default function Accounts() {
                     </div>
                     <div className="col-md-6">
                       <label className="form-label">Kod</label>
-                      <input className="form-control" required value={form.code} onChange={e => setForm({ ...form, code: e.target.value.toUpperCase() })} />
+                      <input className="form-control" value={form.code} onChange={e => setForm({ ...form, code: e.target.value.toUpperCase() })} placeholder="Otomatik (kaydettiğinizde atanır)" disabled />
                     </div>
 
                     <div className="col-md-4">
@@ -466,24 +466,6 @@ export default function Accounts() {
                     <div className="col-md-4">
                       <label className="form-label">Açılış Bakiyesi</label>
                       <input type="number" min="0" step="0.01" className="form-control" value={form.openingBalance} onChange={e => setForm({ ...form, openingBalance: e.target.value })} />
-                    </div>
-
-                    <div className="col-md-4">
-                      <label className="form-label">Telefon</label>
-                      <input className="form-control" value={form.contact.phone} onChange={e => setForm({ ...form, contact: { ...form.contact, phone: e.target.value } })} />
-                    </div>
-                    <div className="col-md-4">
-                      <label className="form-label">E-posta</label>
-                      <input type="email" className="form-control" value={form.contact.email} onChange={e => setForm({ ...form, contact: { ...form.contact, email: e.target.value } })} />
-                    </div>
-                    <div className="col-md-4">
-                      <label className="form-label">Sorumlu</label>
-                      <input className="form-control" value={form.contact.responsible} onChange={e => setForm({ ...form, contact: { ...form.contact, responsible: e.target.value } })} />
-                    </div>
-
-                    <div className="col-12">
-                      <label className="form-label">Notlar</label>
-                      <textarea className="form-control" rows="2" value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })}></textarea>
                     </div>
                   </div>
                 </div>
@@ -519,8 +501,8 @@ export default function Accounts() {
                   <label className="form-label">Tür</label>
                   <select className="form-select" value={stmtFilters.type} onChange={e => setStmtFilters({ ...stmtFilters, type: e.target.value })}>
                     <option value="">Hepsi</option>
-                    <option value="income">Gelir</option>
-                    <option value="expense">Gider</option>
+                    <option value="income">Alınan</option>
+                    <option value="expense">Verilen</option>
                   </select>
                 </div>
                 <div className="col-md-3">
@@ -555,8 +537,8 @@ export default function Accounts() {
               {stmtError && <div className="alert alert-danger mt-2">{stmtError}</div>}
 
               <div className="d-flex gap-3 my-3">
-                <div className="badge text-bg-secondary">Gelir: {formatTRY(stmtSummary.income)}</div>
-                <div className="badge text-bg-warning">Gider: {formatTRY(stmtSummary.expense)}</div>
+                <div className="badge text-bg-secondary">Alınan: {formatTRY(stmtSummary.income)}</div>
+                <div className="badge text-bg-warning">Verilen: {formatTRY(stmtSummary.expense)}</div>
                 <div className={`badge ${stmtSummary.balance >= 0 ? 'text-bg-success' : 'text-bg-danger'}`}>Bakiye: {formatTRY(stmtSummary.balance)}</div>
                 <div className="small text-muted ms-auto">Toplam {stmtTotal} kayıt</div>
               </div>
@@ -582,7 +564,7 @@ export default function Accounts() {
                         <tr key={t._id}>
                           <td>{formatDateTR(t.date)}</td>
                           <td>{t.description}</td>
-                          <td>{t.type === 'income' ? <span className="badge text-bg-success">Gelir</span> : <span className="badge text-bg-warning">Gider</span>}</td>
+                          <td>{t.type === 'income' ? <span className="badge text-bg-success">Alınan</span> : <span className="badge text-bg-warning">Verilen</span>}</td>
                           <td>{t.category?.name || '-'}</td>
                           <td className="text-end">{formatTRY(t.amount)}</td>
                         </tr>
@@ -650,8 +632,8 @@ export default function Accounts() {
                   <div className="col-md-2">
                     <label className="form-label">Tür</label>
                     <select className="form-select" value={txForm.type} onChange={e => setTxForm({ ...txForm, type: e.target.value })}>
-                      <option value="income">Gelir</option>
-                      <option value="expense">Gider</option>
+                          <option value="income">Alınan</option>
+                          <option value="expense">Verilen</option>
                     </select>
                   </div>
                   <div className="col-md-2">
@@ -674,8 +656,8 @@ export default function Accounts() {
                 {txError && <div className="alert alert-danger mt-2">{txError}</div>}
 
                 <div className="d-flex gap-3 my-3">
-                  <div className="badge text-bg-secondary">Gelir: {formatTRY(txSummary.income)}</div>
-                  <div className="badge text-bg-warning">Gider: {formatTRY(txSummary.expense)}</div>
+                  <div className="badge text-bg-secondary">Alınan: {formatTRY(txSummary.income)}</div>
+                  <div className="badge text-bg-warning">Verilen: {formatTRY(txSummary.expense)}</div>
                   <div className={`badge ${txSummary.balance >= 0 ? 'text-bg-success' : 'text-bg-danger'}`}>Bakiye: {formatTRY(txSummary.balance)}</div>
                 </div>
 
@@ -698,7 +680,7 @@ export default function Accounts() {
                         <tr key={t._id}>
                           <td>{formatDateTR(t.date)}</td>
                           <td>{t.description}</td>
-                          <td>{t.type === 'income' ? <span className="badge text-bg-success">Gelir</span> : <span className="badge text-bg-warning">Gider</span>}</td>
+                        <td>{t.type === 'income' ? <span className="badge text-bg-success">Alınan</span> : <span className="badge text-bg-warning">Verilen</span>}</td>
                           <td>{t.category?.name || '-'}</td>
                           <td className="text-end">{formatTRY(t.amount)}</td>
                           <td className="text-end">
@@ -727,9 +709,7 @@ function emptyForm() {
     code: '',
     type: 'customer',
     status: 'active',
-    openingBalance: 0,
-    contact: { phone: '', email: '', responsible: '' },
-    notes: ''
+    openingBalance: 0
   };
 }
 
@@ -739,25 +719,17 @@ function fillForm(acc) {
     code: acc.code || '',
     type: acc.type || 'customer',
     status: acc.status || 'active',
-    openingBalance: acc.openingBalance ?? 0,
-    contact: {
-      phone: acc.contact?.phone || '',
-      email: acc.contact?.email || '',
-      responsible: acc.contact?.responsible || ''
-    },
-    notes: acc.notes || ''
+    openingBalance: acc.openingBalance ?? 0
   };
 }
 
 function buildPayload(f) {
   return {
     name: f.name,
-    code: f.code,
+    ...(f.code ? { code: f.code } : {}),
     type: f.type,
     status: f.status,
-    openingBalance: Number(f.openingBalance || 0),
-    contact: { phone: f.contact.phone || undefined, email: f.contact.email || undefined, responsible: f.contact.responsible || undefined },
-    notes: f.notes || undefined
+    openingBalance: Number(f.openingBalance || 0)
   };
 }
 

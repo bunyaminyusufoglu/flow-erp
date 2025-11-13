@@ -256,7 +256,6 @@ export default function Barcodes() {
     body { margin: 16px; font-family: -apple-system, Segoe UI, Roboto, Arial, Helvetica, sans-serif; }
     .label { width: 80mm; max-width: 100%; text-align: center; margin: 0 auto; }
     .name { font-weight: 600; margin-bottom: 8px; }
-    .code { margin-top: 6px; font-family: monospace; font-size: 12pt; }
     @media print {
       body { margin: 0; }
       .label { page-break-after: always; margin-top: 10mm; }
@@ -267,7 +266,6 @@ export default function Barcodes() {
   <div class="label">
     <div class="name">${escapeHtml(product.name || '')}</div>
     <div class="svg">${svg}</div>
-    <div class="code">${code}</div>
   </div>
   <script>
     window.onload = function() { window.print(); setTimeout(function(){ window.close(); }, 100); };
@@ -354,7 +352,6 @@ export default function Barcodes() {
           <div class="label">
             <div class="name">${escapeHtml(product.name || '')}</div>
             <div class="svg">${svg}</div>
-            <div class="code">${code}</div>
           </div>
         `);
       }
@@ -376,7 +373,6 @@ export default function Barcodes() {
     }
     .label { width: 80mm; max-width: 100%; text-align: center; margin: 0 auto; }
     .name { font-weight: 600; margin-bottom: 8px; font-size: 12pt; }
-    .code { margin-top: 6px; font-family: monospace; font-size: 12pt; }
     @media print {
       body { margin: 0; }
       .grid { gap: 6mm; }

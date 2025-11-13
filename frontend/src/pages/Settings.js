@@ -30,8 +30,6 @@ export default function Settings() {
     setForm({ username: initialUsername, currentPassword: '', newPassword: '', confirmPassword: '' });
   }, [savedCreds, user]);
 
-  const apiBase = useMemo(() => process.env.REACT_APP_API_URL || 'http://localhost:2000', []);
-
   const [themeMode, setThemeMode] = useState(() => localStorage.getItem('theme') || 'system');
 
   function applyThemeChoice(mode) {
@@ -53,14 +51,12 @@ export default function Settings() {
   function validateAndBuild() {
     setError('');
     setMessage('');
-    const username = (form.username || '').trim();
-    if (!username) {
-      setError('Kullanıcı adı zorunludur.');
-      return null;
-    }
+    // Kullanıcı adı değişikliği PASİF: daima mevcut kullanıcı adını kullan
+    const lockedUsername = (savedCreds?.username || user?.username || 'admin').trim();
     const currentPwdRef = savedCreds?.password || 'admin12345';
-    const wantsToChangePassword = !!form.newPassword;
-    const usernameChanged = username !== (savedCreds?.username || user?.username || 'admin');
+    // Şifre değişikliği PASİF: her zaman mevcut şifre korunur
+    const wantsToChangePassword = false;
+    const usernameChanged = false;
 
     if (wantsToChangePassword || usernameChanged) {
       if (!form.currentPassword) {
@@ -74,19 +70,9 @@ export default function Settings() {
     }
 
     let nextPassword = currentPwdRef;
-    if (wantsToChangePassword) {
-      if (String(form.newPassword).length < 6) {
-        setError('Yeni şifre en az 6 karakter olmalıdır.');
-        return null;
-      }
-      if (form.newPassword !== form.confirmPassword) {
-        setError('Yeni şifre ve tekrarı uyuşmuyor.');
-        return null;
-      }
-      nextPassword = form.newPassword;
-    }
+    // Şifre değişikliği pasif olduğundan nextPassword daima currentPwdRef kalır
 
-    return { username, password: nextPassword };
+    return { username: lockedUsername, password: nextPassword };
   }
 
   function handleResetDefaults() {
@@ -148,22 +134,23 @@ export default function Settings() {
                     <form onSubmit={handleSave} className="row g-3">
                       <div className="col-12">
                         <label className="form-label">Kullanıcı Adı</label>
-                        <input className="form-control" value={form.username} onChange={e => setForm({ ...form, username: e.target.value })} />
+                        <input className="form-control" value={form.username} onChange={() => {}} disabled placeholder="Pasif" />
                       </div>
 
                       <div className="col-12">
                         <label className="form-label">Mevcut Şifre</label>
-                        <input type="password" className="form-control" value={form.currentPassword} onChange={e => setForm({ ...form, currentPassword: e.target.value })} placeholder="Değişiklik için gerekli" />
-                        <div className="form-text">Kullanıcı adı veya şifre değişikliği için gerekli.</div>
+                        <input type="password" className="form-control" value={form.currentPassword} onChange={() => {}} disabled placeholder="Pasif" />
+                        <div className="form-text">Kullanıcı adı ve şifre değişikliği devre dışı.</div>
                       </div>
 
                       <div className="col-12 col-md-6">
                         <label className="form-label">Yeni Şifre</label>
-                        <input type="password" className="form-control" value={form.newPassword} onChange={e => setForm({ ...form, newPassword: e.target.value })} />
+                        <input type="password" className="form-control" value={form.newPassword} onChange={e => {}} disabled placeholder="Pasif" />
+                        <div className="form-text">Şifre değiştirme işlemi devre dışı.</div>
                       </div>
                       <div className="col-12 col-md-6">
                         <label className="form-label">Yeni Şifre (Tekrar)</label>
-                        <input type="password" className="form-control" value={form.confirmPassword} onChange={e => setForm({ ...form, confirmPassword: e.target.value })} />
+                        <input type="password" className="form-control" value={form.confirmPassword} onChange={e => {}} disabled placeholder="Pasif" />
                       </div>
 
                       <div className="col-12 d-flex gap-2">

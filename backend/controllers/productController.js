@@ -14,9 +14,8 @@ const getProducts = async (req, res) => {
     if (req.query.search) {
       filter.$or = [
         { name: new RegExp(req.query.search, 'i') },
-        { description: new RegExp(req.query.search, 'i') },
-        { brand: new RegExp(req.query.search, 'i') },
-        { sku: new RegExp(req.query.search, 'i') }
+        { sku: new RegExp(req.query.search, 'i') },
+        { barcode: new RegExp(req.query.search, 'i') }
       ];
     }
 

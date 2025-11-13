@@ -2,12 +2,15 @@ const { body, validationResult } = require('express-validator');
 
 const accountValidation = [
   body('name').trim().notEmpty().withMessage('Cari adı gereklidir').isLength({ max: 120 }).withMessage('Cari adı 120 karakteri aşamaz'),
-  body('code').trim().notEmpty().withMessage('Cari kodu gereklidir').isLength({ max: 20 }).withMessage('Cari kodu 20 karakteri aşamaz').matches(/^[A-Z0-9-]+$/).withMessage('Kod sadece BÜYÜK HARF, RAKAM ve - içerebilir'),
+  body('code')
+    .optional({ nullable: true })
+    .trim()
+    .isLength({ max: 20 }).withMessage('Cari kodu 20 karakteri aşamaz')
+    .matches(/^[A-Z0-9-]+$/).withMessage('Kod sadece BÜYÜK HARF, RAKAM ve - içerebilir'),
   body('type').optional().isIn(['customer', 'supplier', 'other']).withMessage('Geçersiz cari türü'),
   body('openingBalance').optional().isFloat({ min: 0 }).withMessage('Açılış bakiyesi negatif olamaz'),
   body('status').optional().isIn(['active', 'inactive']).withMessage('Geçersiz durum'),
-  body('contact.email').optional().isEmail().withMessage('Geçerli e-posta giriniz'),
-  body('notes').optional().isLength({ max: 500 }).withMessage('Notlar 500 karakteri aşamaz'),
+  // Telefon, e-posta, yetkili ve not alanları kaldırıldı
   (req, res, next) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
