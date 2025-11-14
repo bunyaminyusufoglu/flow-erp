@@ -6,6 +6,7 @@ require('dotenv').config();
 
 // Database connection
 const connectDB = require('./config/database');
+const logger = require('./utils/logger');
 
 // Routes
 const productRoutes = require('./routes/productRoutes');
@@ -24,7 +25,8 @@ app.use(helmet({
   contentSecurityPolicy: false // Test için CSP'yi devre dışı bırak
 })); // Güvenlik için
 app.use(cors()); // CORS desteği
-app.use(morgan('combined')); // Logging
+// Morgan logging - production'da sadece hatalar
+app.use(morgan(process.env.NODE_ENV === 'production' ? 'short' : 'combined')); 
 app.use(express.json()); // JSON parsing
 app.use(express.urlencoded({ extended: true })); // URL encoded parsing
 
@@ -82,7 +84,7 @@ app.use('/api/auth', authRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {
-  console.error(err.stack);
+  logger.error('Server error:', err);
   res.status(500).json({
     message: 'Something went wrong!',
     error: process.env.NODE_ENV === 'development' ? err.message : {}
@@ -111,21 +113,21 @@ const startServer = async () => {
       const legacyIdx = indexes.find(ix => ix.name === 'storeId_1');
       if (legacyIdx) {
         await Store.collection.dropIndex('storeId_1');
-        console.log('🧹 Dropped legacy index storeId_1 on stores');
+        logger.log('Dropped legacy index storeId_1 on stores');
       }
       // Ensure unique index on code exists
       await Store.collection.createIndex({ code: 1 }, { unique: true });
-      console.log('✅ Ensured unique index on stores.code');
+      logger.log('Ensured unique index on stores.code');
 
       // Drop legacy slug index on categories if exists
       try {
         const catIndexes = await Category.collection.indexes();
         if (catIndexes.find(ix => ix.name === 'slug_1')) {
           await Category.collection.dropIndex('slug_1');
-          console.log('🧹 Dropped legacy index slug_1 on categories');
+          logger.log('Dropped legacy index slug_1 on categories');
         }
       } catch (e) {
-        console.warn('Category index sync warning:', e.message);
+        logger.warn('Category index sync warning:', e.message);
       }
 
       // Drop legacy slug index on products if exists
@@ -133,33 +135,32 @@ const startServer = async () => {
         const prodIndexes = await Product.collection.indexes();
         if (prodIndexes.find(ix => ix.name === 'slug_1')) {
           await Product.collection.dropIndex('slug_1');
-          console.log('🧹 Dropped legacy index slug_1 on products');
+          logger.log('Dropped legacy index slug_1 on products');
         }
       } catch (e) {
-        console.warn('Product index sync warning:', e.message);
+        logger.warn('Product index sync warning:', e.message);
       }
     } catch (idxErr) {
-      console.warn('Index sync warning:', idxErr.message);
+      logger.warn('Index sync warning:', idxErr.message);
     }
     
     app.listen(PORT, () => {
-      console.log(`🚀 Server running on port ${PORT}`);
-      console.log(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
-      console.log(`🌐 API URL: http://localhost:${PORT}`);
-      console.log(`📦 Categories API: http://localhost:${PORT}/api/categories`);
-      console.log(`📦 Products API: http://localhost:${PORT}/api/products`);
-      console.log(`📦 Shipments API: http://localhost:${PORT}/api/shipments`);
-      console.log(`🏪 Stores API: http://localhost:${PORT}/api/stores`);
-      console.log(`📊 Stock Movements API: http://localhost:${PORT}/api/stock-movements`);
-      console.log(`📒 Accounts API: http://localhost:${PORT}/api/accounts`);
-      console.log(`🔐 Auth API: http://localhost:${PORT}/api/auth`);
-      console.log(`🧪 Shipment View: http://localhost:${PORT}/shipment-view`);
-      console.log(`📝 Shipment Add: http://localhost:${PORT}/shipment-add`);
-      console.log(`📦 Product Add: http://localhost:${PORT}/product-add`);
-      console.log(`📘 API Docs: http://localhost:${PORT}/api/docs`);
+      logger.log(`Server running on port ${PORT}`);
+      logger.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+      // API endpoint'lerini sadece development'ta göster
+      if (process.env.NODE_ENV !== 'production') {
+        logger.log(`API URL: http://localhost:${PORT}`);
+        logger.log(`Categories API: http://localhost:${PORT}/api/categories`);
+        logger.log(`Products API: http://localhost:${PORT}/api/products`);
+        logger.log(`Shipments API: http://localhost:${PORT}/api/shipments`);
+        logger.log(`Stores API: http://localhost:${PORT}/api/stores`);
+        logger.log(`Stock Movements API: http://localhost:${PORT}/api/stock-movements`);
+        logger.log(`Accounts API: http://localhost:${PORT}/api/accounts`);
+        logger.log(`Auth API: http://localhost:${PORT}/api/auth`);
+      }
     });
   } catch (error) {
-    console.error('❌ Server startup error:', error);
+    logger.error('Server startup error:', error);
     process.exit(1);
   }
 };

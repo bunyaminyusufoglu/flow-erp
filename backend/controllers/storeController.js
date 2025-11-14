@@ -1,5 +1,6 @@
 const Store = require('../models/Store');
 const { validationResult } = require('express-validator');
+const logger = require('../utils/logger');
 
 // @desc    Tüm mağazaları getir
 // @route   GET /api/stores
@@ -47,7 +48,7 @@ const getStores = async (req, res) => {
       data: stores
     });
   } catch (error) {
-    console.error('Get stores error:', error);
+    logger.error('Get stores error:', error);
     res.status(500).json({
       success: false,
       message: 'Mağazalar getirilirken hata oluştu',
@@ -75,7 +76,7 @@ const getStore = async (req, res) => {
       data: store
     });
   } catch (error) {
-    console.error('Get store error:', error);
+    logger.error('Get store error:', error);
     res.status(500).json({
       success: false,
       message: 'Mağaza getirilirken hata oluştu',
@@ -107,7 +108,7 @@ const createStore = async (req, res) => {
       data: store
     });
   } catch (error) {
-    console.error('Create store error:', error);
+    logger.error('Create store error:', error);
     
     // Duplicate key hatası
     if (error.code === 11000) {
@@ -160,7 +161,7 @@ const updateStore = async (req, res) => {
       data: store
     });
   } catch (error) {
-    console.error('Update store error:', error);
+    logger.error('Update store error:', error);
     
     // Duplicate key hatası
     if (error.code === 11000) {
@@ -198,7 +199,7 @@ const deleteStore = async (req, res) => {
       message: 'Mağaza başarıyla silindi'
     });
   } catch (error) {
-    console.error('Delete store error:', error);
+    logger.error('Delete store error:', error);
     res.status(500).json({
       success: false,
       message: 'Mağaza silinirken hata oluştu',

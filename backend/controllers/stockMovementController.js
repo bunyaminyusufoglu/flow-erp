@@ -1,4 +1,5 @@
 const StockMovement = require('../models/StockMovement');
+const logger = require('../utils/logger');
 
 // @desc    Stok hareketlerini listele
 // @route   GET /api/stock-movements
@@ -33,7 +34,7 @@ const getStockMovements = async (req, res) => {
       data: movements
     });
   } catch (error) {
-    console.error('Get stock movements error:', error);
+    logger.error('Get stock movements error:', error);
     res.status(500).json({ success: false, message: 'Stok hareketleri getirilirken hata oluştu', error: error.message });
   }
 };

@@ -1,6 +1,7 @@
 const Category = require('../models/Category');
 const Product = require('../models/Product');
 const { validationResult } = require('express-validator');
+const logger = require('../utils/logger');
 
 // Tüm kategorileri getir
 const getCategories = async (req, res) => {
@@ -76,7 +77,7 @@ const getCategories = async (req, res) => {
       data
     });
   } catch (error) {
-    console.error('Get categories error:', error);
+    logger.error('Get categories error:', error);
     res.status(500).json({
       success: false,
       message: 'Kategoriler getirilirken hata oluştu',
@@ -97,7 +98,7 @@ const getCategoryTree = async (req, res) => {
       data: tree
     });
   } catch (error) {
-    console.error('Get category tree error:', error);
+    logger.error('Get category tree error:', error);
     res.status(500).json({
       success: false,
       message: 'Kategori ağacı getirilirken hata oluştu',
@@ -125,7 +126,7 @@ const getCategory = async (req, res) => {
       data: category
     });
   } catch (error) {
-    console.error('Get category error:', error);
+    logger.error('Get category error:', error);
     res.status(500).json({
       success: false,
       message: 'Kategori getirilirken hata oluştu',
@@ -140,7 +141,7 @@ const getCategoryBySlug = async (req, res) => {
     // Sade modelde slug alanı yok; desteklenmiyor
     return res.status(404).json({ success: false, message: 'Desteklenmeyen istek' });
   } catch (error) {
-    console.error('Get category by slug error:', error);
+    logger.error('Get category by slug error:', error);
     res.status(500).json({
       success: false,
       message: 'Kategori getirilirken hata oluştu',
@@ -163,7 +164,14 @@ const createCategory = async (req, res) => {
     }
 
     // Sade: sadece name ve status alınır
-    const payload = { name: req.body.name, status: req.body.status || 'active' };
+    // Slug field'ı varsa bile kullanılmaz (eski model'den kalan)
+    const payload = { 
+      name: req.body.name, 
+      status: req.body.status || 'active' 
+    };
+    // Slug field'ını açıkça temizle (eski index hatası için)
+    delete payload.slug;
+    
     const category = await Category.create(payload);
 
     res.status(201).json({
@@ -172,14 +180,24 @@ const createCategory = async (req, res) => {
       data: category
     });
   } catch (error) {
-    console.error('Create category error:', error);
+    logger.error('Create category error:', error);
     
     // Duplicate key hatası
     if (error.code === 11000) {
       const field = Object.keys(error.keyValue)[0];
+      // Field adına göre Türkçe mesaj
+      let message = '';
+      if (field === 'name') {
+        message = 'Bu kategori adı zaten kullanılıyor';
+      } else if (field === 'slug') {
+        // Slug artık kullanılmıyor - veritabanında eski index var
+        message = 'Bu kategori adı zaten kullanılıyor. (Not: Veritabanında eski slug index\'i kalmış olabilir, lütfen sunucuyu yeniden başlatın)';
+      } else {
+        message = `${field} zaten kullanımda`;
+      }
       return res.status(400).json({
         success: false,
-        message: `${field} zaten kullanımda`
+        message: message
       });
     }
 
@@ -207,6 +225,8 @@ const updateCategory = async (req, res) => {
     const payload = {};
     if (typeof req.body.name === 'string') payload.name = req.body.name;
     if (typeof req.body.status === 'string') payload.status = req.body.status;
+    // Slug field'ını açıkça temizle (eski index hatası için)
+    delete payload.slug;
 
     const category = await Category.findByIdAndUpdate(
       req.params.id,
@@ -227,14 +247,24 @@ const updateCategory = async (req, res) => {
       data: category
     });
   } catch (error) {
-    console.error('Update category error:', error);
+    logger.error('Update category error:', error);
     
     // Duplicate key hatası
     if (error.code === 11000) {
       const field = Object.keys(error.keyValue)[0];
+      // Field adına göre Türkçe mesaj
+      let message = '';
+      if (field === 'name') {
+        message = 'Bu kategori adı zaten kullanılıyor';
+      } else if (field === 'slug') {
+        // Slug artık kullanılmıyor - veritabanında eski index var
+        message = 'Bu kategori adı zaten kullanılıyor. (Not: Veritabanında eski slug index\'i kalmış olabilir, lütfen sunucuyu yeniden başlatın)';
+      } else {
+        message = `${field} zaten kullanımda`;
+      }
       return res.status(400).json({
         success: false,
-        message: `${field} zaten kullanımda`
+        message: message
       });
     }
 
@@ -274,7 +304,7 @@ const deleteCategory = async (req, res) => {
       message: 'Kategori başarıyla silindi'
     });
   } catch (error) {
-    console.error('Delete category error:', error);
+    logger.error('Delete category error:', error);
     res.status(500).json({
       success: false,
       message: 'Kategori silinirken hata oluştu',
@@ -307,7 +337,7 @@ const updateCategoryProductCount = async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Update category product count error:', error);
+    logger.error('Update category product count error:', error);
     res.status(500).json({
       success: false,
       message: 'Kategori ürün sayısı güncellenirken hata oluştu',
@@ -335,7 +365,7 @@ const updateAllCategoryProductCounts = async (req, res) => {
       data: results
     });
   } catch (error) {
-    console.error('Update all category product counts error:', error);
+    logger.error('Update all category product counts error:', error);
     res.status(500).json({
       success: false,
       message: 'Kategori ürün sayıları güncellenirken hata oluştu',
@@ -365,7 +395,7 @@ const toggleCategoryStatus = async (req, res) => {
       data: category
     });
   } catch (error) {
-    console.error('Toggle category status error:', error);
+    logger.error('Toggle category status error:', error);
     res.status(500).json({
       success: false,
       message: 'Kategori durumu değiştirilirken hata oluştu',

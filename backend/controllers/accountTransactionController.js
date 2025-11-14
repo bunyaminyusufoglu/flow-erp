@@ -1,6 +1,7 @@
 const { validationResult } = require('express-validator');
 const Account = require('../models/Account');
 const AccountTransaction = require('../models/AccountTransaction');
+const logger = require('../utils/logger');
 
 // @desc    Bir cari hesabın işlemlerini listele
 // @route   GET /api/accounts/:accountId/transactions
@@ -59,7 +60,7 @@ const getAccountTransactions = async (req, res) => {
       summary: { income, expense, balance: income - expense }
     });
   } catch (error) {
-    console.error('Get account transactions error:', error);
+    logger.error('Get account transactions error:', error);
     res.status(500).json({ success: false, message: 'İşlemler getirilirken hata oluştu', error: error.message });
   }
 };
@@ -92,7 +93,7 @@ const createAccountTransaction = async (req, res) => {
     const populated = await tx.populate('category', 'name');
     res.status(201).json({ success: true, message: 'İşlem eklendi', data: populated });
   } catch (error) {
-    console.error('Create account transaction error:', error);
+    logger.error('Create account transaction error:', error);
     res.status(500).json({ success: false, message: 'İşlem eklenirken hata oluştu', error: error.message });
   }
 };
@@ -112,7 +113,7 @@ const deleteAccountTransaction = async (req, res) => {
     await AccountTransaction.deleteOne({ _id: tx._id });
     res.json({ success: true, message: 'İşlem silindi' });
   } catch (error) {
-    console.error('Delete account transaction error:', error);
+    logger.error('Delete account transaction error:', error);
     res.status(500).json({ success: false, message: 'İşlem silinirken hata oluştu', error: error.message });
   }
 };

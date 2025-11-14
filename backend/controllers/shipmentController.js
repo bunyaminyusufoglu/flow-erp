@@ -3,6 +3,7 @@ const Product = require('../models/Product');
 const Store = require('../models/Store');
 const StockMovement = require('../models/StockMovement');
 const { validationResult } = require('express-validator');
+const logger = require('../utils/logger');
 
 // @desc    Tüm sevkiyatları getir
 // @route   GET /api/shipments
@@ -54,7 +55,7 @@ const getShipments = async (req, res) => {
       data: shipments
     });
   } catch (error) {
-    console.error('Get shipments error:', error);
+    logger.error('Get shipments error:', error);
     res.status(500).json({
       success: false,
       message: 'Sevkiyatlar getirilirken hata oluştu',
@@ -85,7 +86,7 @@ const getShipment = async (req, res) => {
       data: shipment
     });
   } catch (error) {
-    console.error('Get shipment error:', error);
+    logger.error('Get shipment error:', error);
     res.status(500).json({
       success: false,
       message: 'Sevkiyat getirilirken hata oluştu',
@@ -195,7 +196,7 @@ const createShipment = async (req, res) => {
       data: shipment
     });
   } catch (error) {
-    console.error('Create shipment error:', error);
+    logger.error('Create shipment error:', error);
     if (error.code === 11000) {
       const field = Object.keys(error.keyValue)[0];
       return res.status(400).json({ success: false, message: `${field} zaten kullanımda` });
@@ -241,7 +242,7 @@ const updateShipment = async (req, res) => {
       data: shipment
     });
   } catch (error) {
-    console.error('Update shipment error:', error);
+    logger.error('Update shipment error:', error);
     
     // Duplicate key hatası
     if (error.code === 11000) {
@@ -289,7 +290,7 @@ const deleteShipment = async (req, res) => {
       message: 'Sevkiyat başarıyla silindi'
     });
   } catch (error) {
-    console.error('Delete shipment error:', error);
+    logger.error('Delete shipment error:', error);
     res.status(500).json({
       success: false,
       message: 'Sevkiyat silinirken hata oluştu',
@@ -354,7 +355,7 @@ const updateShipmentStatus = async (req, res) => {
       data: shipment
     });
   } catch (error) {
-    console.error('Update shipment status error:', error);
+    logger.error('Update shipment status error:', error);
     res.status(500).json({
       success: false,
       message: 'Sevkiyat durumu güncellenirken hata oluştu',
@@ -383,7 +384,7 @@ const getOverdueShipments = async (req, res) => {
       data: overdueShipments
     });
   } catch (error) {
-    console.error('Get overdue shipments error:', error);
+    logger.error('Get overdue shipments error:', error);
     res.status(500).json({
       success: false,
       message: 'Geciken sevkiyatlar getirilirken hata oluştu',
@@ -422,7 +423,7 @@ const getShipmentStats = async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Get shipment stats error:', error);
+    logger.error('Get shipment stats error:', error);
     res.status(500).json({
       success: false,
       message: 'Sevkiyat istatistikleri getirilirken hata oluştu',

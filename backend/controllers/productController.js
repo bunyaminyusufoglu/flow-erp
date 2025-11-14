@@ -1,5 +1,6 @@
 const Product = require('../models/Product');
 const { validationResult } = require('express-validator');
+const logger = require('../utils/logger');
 
 const getProducts = async (req, res) => {
   try {
@@ -45,8 +46,7 @@ const getProducts = async (req, res) => {
       data: products
     });
   } catch (error) {
-    console.error('Get products error:', error);
-    console.error('Error details:', error);
+    logger.error('Get products error:', error);
     res.status(500).json({
       success: false,
       message: 'Ürünler getirilirken hata oluştu',
@@ -72,7 +72,7 @@ const getProduct = async (req, res) => {
       data: product
     });
   } catch (error) {
-    console.error('Get product error:', error);
+    logger.error('Get product error:', error);
     res.status(500).json({
       success: false,
       message: 'Ürün getirilirken hata oluştu',
@@ -85,14 +85,19 @@ const createProduct = async (req, res) => {
     // Validation hatalarını kontrol et
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
+      const errorMessages = errors.array().map(err => err.msg).join(', ');
       return res.status(400).json({
         success: false,
-        message: 'Validation hataları',
+        message: `Validation hataları: ${errorMessages}`,
         errors: errors.array()
       });
     }
 
-    const product = await Product.create(req.body);
+    // Slug field'ını temizle (eğer varsa)
+    const payload = { ...req.body };
+    delete payload.slug;
+
+    const product = await Product.create(payload);
 
     res.status(201).json({
       success: true,
@@ -100,14 +105,25 @@ const createProduct = async (req, res) => {
       data: product
     });
   } catch (error) {
-    console.error('Create product error:', error);
+    logger.error('Create product error:', error);
     
     // Duplicate key hatası
     if (error.code === 11000) {
       const field = Object.keys(error.keyValue)[0];
+      // Field adına göre Türkçe mesaj
+      let message = '';
+      if (field === 'sku') {
+        message = 'Bu SKU zaten kullanılıyor';
+      } else if (field === 'barcode') {
+        message = 'Bu barkod zaten kullanılıyor';
+      } else if (field === 'slug') {
+        message = 'Bu ürün adı zaten kullanılıyor. (Not: Veritabanında eski slug index\'i kalmış olabilir, lütfen sunucuyu yeniden başlatın)';
+      } else {
+        message = `${field} zaten kullanımda`;
+      }
       return res.status(400).json({
         success: false,
-        message: `${field} zaten kullanımda`
+        message: message
       });
     }
 
@@ -123,16 +139,21 @@ const updateProduct = async (req, res) => {
     // Validation hatalarını kontrol et
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
+      const errorMessages = errors.array().map(err => err.msg).join(', ');
       return res.status(400).json({
         success: false,
-        message: 'Validation hataları',
+        message: `Validation hataları: ${errorMessages}`,
         errors: errors.array()
       });
     }
 
+    // Slug field'ını temizle (eğer varsa)
+    const payload = { ...req.body };
+    delete payload.slug;
+
     const product = await Product.findByIdAndUpdate(
       req.params.id,
-      req.body,
+      payload,
       { new: true, runValidators: true }
     );
 
@@ -149,14 +170,25 @@ const updateProduct = async (req, res) => {
       data: product
     });
   } catch (error) {
-    console.error('Update product error:', error);
+    logger.error('Update product error:', error);
     
     // Duplicate key hatası
     if (error.code === 11000) {
       const field = Object.keys(error.keyValue)[0];
+      // Field adına göre Türkçe mesaj
+      let message = '';
+      if (field === 'sku') {
+        message = 'Bu SKU zaten kullanılıyor';
+      } else if (field === 'barcode') {
+        message = 'Bu barkod zaten kullanılıyor';
+      } else if (field === 'slug') {
+        message = 'Bu ürün adı zaten kullanılıyor. (Not: Veritabanında eski slug index\'i kalmış olabilir, lütfen sunucuyu yeniden başlatın)';
+      } else {
+        message = `${field} zaten kullanımda`;
+      }
       return res.status(400).json({
         success: false,
-        message: `${field} zaten kullanımda`
+        message: message
       });
     }
 
@@ -183,7 +215,7 @@ const deleteProduct = async (req, res) => {
       message: 'Ürün başarıyla silindi'
     });
   } catch (error) {
-    console.error('Delete product error:', error);
+    logger.error('Delete product error:', error);
     res.status(500).json({
       success: false,
       message: 'Ürün silinirken hata oluştu',

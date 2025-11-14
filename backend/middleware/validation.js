@@ -1,6 +1,6 @@
 const { body } = require('express-validator');
 
-// Ürün validation kuralları
+// Ürün validation kuralları (model'e göre güncellenmiş)
 const productValidation = [
   body('name')
     .trim()
@@ -9,13 +9,6 @@ const productValidation = [
     .isLength({ max: 100 })
     .withMessage('Ürün adı 100 karakterden fazla olamaz'),
 
-  body('description')
-    .trim()
-    .notEmpty()
-    .withMessage('Ürün açıklaması gereklidir')
-    .isLength({ max: 500 })
-    .withMessage('Açıklama 500 karakterden fazla olamaz'),
-
   body('sku')
     .trim()
     .notEmpty()
@@ -23,23 +16,16 @@ const productValidation = [
     .isLength({ min: 3, max: 50 })
     .withMessage('SKU 3-50 karakter arasında olmalıdır'),
 
-  body('brand')
+  body('barcode')
+    .optional()
     .trim()
-    .notEmpty()
-    .withMessage('Marka gereklidir')
-    .isLength({ max: 100 })
-    .withMessage('Marka 100 karakterden fazla olamaz'),
+    .isString()
+    .withMessage('Barkod geçerli bir metin olmalıdır'),
 
   body('category')
     .optional()
     .isMongoId()
     .withMessage('Geçerli bir kategori ID\'si giriniz'),
-
-  body('purchasePrice')
-    .notEmpty()
-    .withMessage('Alış fiyatı gereklidir')
-    .isFloat({ min: 0 })
-    .withMessage('Alış fiyatı geçerli bir sayı olmalıdır'),
 
   body('sellingPrice')
     .notEmpty()
@@ -52,26 +38,46 @@ const productValidation = [
     .isFloat({ min: 0 })
     .withMessage('Toptan fiyatı geçerli bir sayı olmalıdır'),
 
+  body('discountPrice')
+    .optional()
+    .isFloat({ min: 0 })
+    .withMessage('İndirim fiyatı geçerli bir sayı olmalıdır'),
+
   body('stockQuantity')
     .notEmpty()
     .withMessage('Stok miktarı gereklidir')
     .isInt({ min: 0 })
     .withMessage('Stok miktarı negatif olamaz'),
 
+  body('minStockLevel')
+    .optional()
+    .isInt({ min: 0 })
+    .withMessage('Minimum stok seviyesi negatif olamaz'),
+
+  body('maxStockLevel')
+    .optional()
+    .isInt({ min: 0 })
+    .withMessage('Maksimum stok seviyesi negatif olamaz'),
+
   body('unit')
     .optional()
     .isIn(['adet', 'kg', 'metre', 'litre', 'kutu', 'paket'])
     .withMessage('Geçerli bir birim seçiniz'),
 
-  body('discountPrice')
+  body('weight')
     .optional()
     .isFloat({ min: 0 })
-    .withMessage('İndirim fiyatı geçerli bir sayı olmalıdır'),
+    .withMessage('Ağırlık negatif olamaz'),
 
   body('status')
     .optional()
     .isIn(['active', 'inactive', 'discontinued'])
-    .withMessage('Durum active, inactive veya discontinued olmalıdır')
+    .withMessage('Durum active, inactive veya discontinued olmalıdır'),
+
+  body('isFeatured')
+    .optional()
+    .isBoolean()
+    .withMessage('Öne çıkarılmış durumu geçerli bir boolean değer olmalıdır')
 ];
 
 // Stok validation artık kullanılmıyor (endpoint kaldırıldı)

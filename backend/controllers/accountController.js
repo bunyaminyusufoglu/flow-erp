@@ -1,6 +1,7 @@
 const { validationResult } = require('express-validator');
 const Account = require('../models/Account');
 const AccountTransaction = require('../models/AccountTransaction');
+const logger = require('../utils/logger');
 
 // @desc    Cari hesapları listele
 // @route   GET /api/accounts
@@ -44,7 +45,7 @@ const getAccounts = async (req, res) => {
       data: accounts
     });
   } catch (error) {
-    console.error('Get accounts error:', error);
+    logger.error('Get accounts error:', error);
     res.status(500).json({ success: false, message: 'Cari hesaplar getirilirken hata oluştu', error: error.message });
   }
 };
@@ -75,7 +76,7 @@ const getAccount = async (req, res) => {
 
     res.json({ success: true, data: { account, summary: { income, expense, balance } } });
   } catch (error) {
-    console.error('Get account error:', error);
+    logger.error('Get account error:', error);
     res.status(500).json({ success: false, message: 'Cari hesap getirilirken hata oluştu', error: error.message });
   }
 };
@@ -93,7 +94,7 @@ const createAccount = async (req, res) => {
     const account = await Account.create(req.body);
     res.status(201).json({ success: true, message: 'Cari hesap oluşturuldu', data: account });
   } catch (error) {
-    console.error('Create account error:', error);
+    logger.error('Create account error:', error);
     if (error.code === 11000) {
       const field = Object.keys(error.keyValue)[0];
       return res.status(400).json({ success: false, message: `${field} zaten kullanımda` });
@@ -124,7 +125,7 @@ const updateAccount = async (req, res) => {
 
     res.json({ success: true, message: 'Cari hesap güncellendi', data: account });
   } catch (error) {
-    console.error('Update account error:', error);
+    logger.error('Update account error:', error);
     if (error.code === 11000) {
       const field = Object.keys(error.keyValue)[0];
       return res.status(400).json({ success: false, message: `${field} zaten kullanımda` });
@@ -151,7 +152,7 @@ const deleteAccount = async (req, res) => {
     await Account.findByIdAndDelete(account._id);
     res.json({ success: true, message: 'Cari hesap silindi' });
   } catch (error) {
-    console.error('Delete account error:', error);
+    logger.error('Delete account error:', error);
     res.status(500).json({ success: false, message: 'Cari hesap silinirken hata oluştu', error: error.message });
   }
 };
