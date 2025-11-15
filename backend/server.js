@@ -3,6 +3,7 @@ const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
 require('dotenv').config();
+const path = require('path');
 
 // Database connection
 const connectDB = require('./config/database');
@@ -32,6 +33,10 @@ app.use(express.urlencoded({ extended: true })); // URL encoded parsing
 
 // Static files serving
 app.use(express.static(__dirname));
+
+// Serve frontend build (if exists)
+const FRONTEND_BUILD_PATH = path.join(__dirname, '../frontend/build');
+app.use(express.static(FRONTEND_BUILD_PATH));
 
 // Routes
 app.get('/', (req, res) => {
@@ -81,6 +86,14 @@ app.use('/api/stores', storeRoutes);
 app.use('/api/stock-movements', stockMovementRoutes);
 app.use('/api/accounts', accountRoutes);
 app.use('/api/auth', authRoutes);
+
+// SPA fallback for client-side routing (avoid 404 on refresh)
+app.get('*', (req, res, next) => {
+  if (req.path.startsWith('/api')) return next();
+  res.sendFile(path.join(FRONTEND_BUILD_PATH, 'index.html'), (err) => {
+    if (err) next();
+  });
+});
 
 // Error handling middleware
 app.use((err, req, res, next) => {

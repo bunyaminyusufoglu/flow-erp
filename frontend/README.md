@@ -1,70 +1,69 @@
-# Getting Started with Create React App
+# Flow ERP Frontend
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+React tabanlı Flow ERP arayüzü. Ürün, kategori, mağaza, sevkiyat ve cari (gelir/gider) modüllerini içerir. Arka uç (API) ile `REACT_APP_API_URL` üzerinden haberleşir.
 
-## Available Scripts
+## Gereksinimler
+- Node.js 18+ (önerilir)
+- npm 9+ veya pnpm/yarn
+- Çalışır durumda bir backend API (varsayılan: `http://localhost:2000`)
 
-In the project directory, you can run:
+## Kurulum
+1. Bağımlılıkları yükleyin:
+   ```
+   npm install
+   ```
+2. Ortam değişkenini tanımlayın (isteğe bağlı):
+   `.env` dosyası oluşturun:
+   ```
+   REACT_APP_API_URL=http://localhost:2000
+   ```
+   Eğer tanımlanmazsa uygulama varsayılan olarak `http://localhost:2000` adresini kullanır.
 
-### `npm start`
+## Geliştirme
+Uygulamayı geliştirme modunda başlatın:
+```
+npm start
+```
+Tarayıcıdan `http://localhost:3000` adresine gidin. API için backend’in çalıştığından emin olun.
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+## Build (Prod)
+Optimize prod derleme oluşturur:
+```
+npm run build
+```
+Oluşan statik dosyalar `build/` klasöründedir. Herhangi bir statik sunucuda servis edebilirsiniz.
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+## Sayfalar ve Modüller
+- Dashboard: genel istatistikler (`/src/pages/Dashboard.js`)
+- Ürünler: listele/ekle/düzenle/sil (`/src/pages/Products.js`)
+- Kategoriler: listeleme (`/src/pages/Categories.js`)
+- Mağazalar: listeleme (`/src/pages/Stores.js`)
+- Sevkiyatlar: oluşturma/detay/Excel aktarımı (`/src/pages/Shipments.js`)
+- Cari Hesaplar: cari, işlem, ekstre, Excel aktarımı (`/src/pages/Accounts.js`)
+- Giriş: JWT tabanlı basit oturum (`/src/pages/Login.js`, `/src/services/auth.js`)
 
-### `npm test`
+Ortak bileşenler:
+- Sidebar (`/src/components/Sidebar.js`)
+- Tema stilleri (`/src/theme.css`)
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+## Kimlik Doğrulama
+Giriş sonrası `localStorage` içinde `token` ve `user` saklanır. Rotalar basit bir kontrol ile (token var mı) yönlendirme yapar. API çağrılarında gerekli ise Authorization header eklemeyi projeye entegre edebilirsiniz (örn. interceptor).
 
-### `npm run build`
+## API Uçları (beklenen)
+Frontend varsayılan olarak backend’te şu uçları kullanır:
+- `GET/POST/PUT/DELETE /api/products`
+- `GET /api/categories`
+- `GET /api/stores`
+- `GET/POST/PUT/DELETE /api/shipments`
+- `GET/POST/PUT/DELETE /api/accounts`
+- `POST /api/auth/login`, `POST /api/auth/register`
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+## Sık Karşılaşılan Sorunlar
+- Boş sayfa/istek hataları: `REACT_APP_API_URL` yanlış veya backend kapalı olabilir.
+- CORS hatası: Backend’te CORS izinlerini doğrulayın.
+- 401/403: Token eksik/süresi dolmuş; tekrar giriş yapın.
+- Build sonrasında boş sayfa: Sunucu tarafında SPA yönlendirmesini (`index.html`) doğru yapılandırın.
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
-
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
-
-### `npm run eject`
-
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
-
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
-
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
-
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
-
-## Learn More
-
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
-
-To learn React, check out the [React documentation](https://reactjs.org/).
-
-### Code Splitting
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
-
-### Analyzing the Bundle Size
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
-
-### Making a Progressive Web App
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
-
-### Advanced Configuration
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
-
-### Deployment
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
-
-### `npm run build` fails to minify
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+## Komutlar
+- `npm start` — Geliştirme sunucusu
+- `npm run build` — Üretim derlemesi
